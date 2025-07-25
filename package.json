@@ -1,0 +1,24 @@
+{
+  "name": "ymca-smart-app",
+  "version": "1.0.0",
+  "description": "SMART on FHIR application for YMCA health data integration",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000 -c-1",
+    "dev": "npx http-server . -p 3000 -c-1 --cors"
+  },
+  "keywords": [
+    "smart-on-fhir",
+    "fhir",
+    "healthcare",
+    "ymca"
+  ],
+  "author": "YMCA",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "fhirclient": "^2.5.2"
+  }
+}

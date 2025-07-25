@@ -1,0 +1,25 @@
+{
+  "software_id": "ymca-smart-app",
+  "client_name": "YMCA Health Dashboard",
+  "client_uri": "http://localhost:3000",
+  "logo_uri": "http://localhost:3000/logo.png",
+  "tos_uri": "http://localhost:3000/terms",
+  "policy_uri": "http://localhost:3000/privacy",
+  "redirect_uris": [
+    "http://localhost:3000/index.html"
+  ],
+  "token_endpoint_auth_method": "none",
+  "grant_types": [
+    "authorization_code"
+  ],
+  "response_types": [
+    "code"
+  ],
+  "scope": "launch patient/*.read",
+  "fhir_versions": [
+    "4.0.1"
+  ],
+  "launch_uris": [
+    "http://localhost:3000/launch.html"
+  ]
+}

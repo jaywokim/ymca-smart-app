@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YMCA SMART App - Patient Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .logo-icon {
+            font-size: 32px;
+            margin-right: 10px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .main-content {
+            padding: 30px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .card-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .patient-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            font-weight: 500;
+            color: #1e293b;
+        }
+        
+        .vitals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        
+        .vital-item {
+            text-align: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .vital-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        
+        .vital-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        
+        .observation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .observation-item:last-child {
+            border-bottom: none;
+        }
+        
+        .observation-name {
+            font-weight: 500;
+            color: #1e293b;
+        }
+        
+        .observation-value {
+            font-weight: 500;
+            color: #667eea;
+        }
+        
+        .observation-date {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 40px 20px;
+            color: #dc2626;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🏥</span>
+                    YMCA Health Dashboard
+                </div>
+                <div class="user-info">
+                    <span id="user-name">Loading...</span>
+                    <button class="btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="main-content">
+        <div class="container">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <h2>Loading patient data...</h2>
+                <p>Please wait while we fetch your health information</p>
+            </div>
+            
+            <div id="content" style="display: none;">
+                <!-- Patient Information Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">👤</span>
+                        <h2 class="card-title">Patient Information</h2>
+                    </div>
+                    <div id="patient-info" class="patient-info">
+                        <!-- Patient data will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Vital Signs Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">💓</span>
+                        <h2 class="card-title">Latest Vital Signs</h2>
+                    </div>
+                    <div id="vitals" class="vitals-grid">
+                        <!-- Vitals will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Recent Observations Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📊</span>
+                        <h2 class="card-title">Recent Observations</h2>
+                    </div>
+                    <div id="observations" class="observation-list">
+                        <!-- Observations will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- YMCA Referral Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🏊‍♀️</span>
+                        <h2 class="card-title">YMCA Program Referral</h2>
+                    </div>
+                    <div class="referral-form">
+                        <div style="margin-bottom: 16px;">
+                            <label for="program-select" style="display: block; margin-bottom: 8px; font-weight: 500; color: #1e293b;">Select YMCA Program:</label>
+                            <select id="program-select" style="
+                                width: 100%; 
+                                padding: 12px; 
+                                border: 1px solid #e2e8f0; 
+                                border-radius: 6px; 
+                                font-size: 14px;
+                                background: white;
+                            ">
+                                <option value="">Choose a program...</option>
+                                <option value="Diabetes Prevention">Diabetes Prevention Program</option>
+                                <option value="Cardiac Rehabilitation">Cardiac Rehabilitation</option>
+                                <option value="Arthritis Exercise">Arthritis Exercise Program</option>
+                                <option value="Weight Management">Weight Management Program</option>
+                                <option value="Senior Fitness">Senior Fitness Program</option>
+                                <option value="Chronic Disease Management">Chronic Disease Management</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label for="priority-select" style="display: block; margin-bottom: 8px; font-weight: 500; color: #1e293b;">Priority:</label>
+                            <select id="priority-select" style="
+                                width: 100%; 
+                                padding: 12px; 
+                                border: 1px solid #e2e8f0; 
+                                border-radius: 6px; 
+                                font-size: 14px;
+                                background: white;
+                            ">
+                                <option value="routine">Routine</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="asap">ASAP</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label for="referral-notes" style="display: block; margin-bottom: 8px; font-weight: 500; color: #1e293b;">Clinical Notes:</label>
+                            <textarea id="referral-notes" placeholder="Enter clinical notes, patient conditions, or specific program recommendations..." style="
+                                width: 100%; 
+                                height: 80px; 
+                                padding: 12px; 
+                                border: 1px solid #e2e8f0; 
+                                border-radius: 6px; 
+                                font-size: 14px;
+                                resize: vertical;
+                                font-family: inherit;
+                            "></textarea>
+                        </div>
+                        
+                        <button id="submit-referral-btn" onclick="handleReferralSubmission()" style="
+                            background: #667eea; 
+                            color: white; 
+                            border: none; 
+                            padding: 12px 24px; 
+                            border-radius: 6px; 
+                            cursor: pointer; 
+                            font-size: 16px; 
+                            font-weight: 500;
+                            width: 100%;
+                            transition: background-color 0.2s;
+                        " onmouseover="this.style.background='#5a67d8'" onmouseout="this.style.background='#667eea'">
+                            📤 Submit Referral to HAPI FHIR Server
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error" style="display: none;" class="error">
+                <div class="error-icon">⚠️</div>
+                <h2>Unable to load patient data</h2>
+                <p id="error-message">Please try again later</p>
+            </div>
+        </div>
+    </main>
+    
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
