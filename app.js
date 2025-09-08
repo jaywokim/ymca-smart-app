@@ -705,3 +705,17 @@ async function handleReferralSubmission() {
         submitBtn.textContent = '📤 Submit Referral to HAPI FHIR Server';
     }
 }
+
+// Expose utility functions for testing if in Node.js environment
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        getPatientName,
+        getPatientIdentifier,
+        getPatientAddress,
+        getPatientPhone,
+        getObservationName,
+        getObservationValue,
+        getVitalType,
+        formatDate
+    };
+}
