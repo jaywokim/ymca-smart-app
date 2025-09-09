@@ -7,7 +7,7 @@ const {
   getObservationValue,
   getVitalType,
   formatDate
-} = require('../app.js');
+} = require('../src/app.js');
 
 describe('Patient Utility Functions', () => {
   describe('getPatientName', () => {
