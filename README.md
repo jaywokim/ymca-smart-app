@@ -124,13 +124,21 @@ The app reads:
 ## File Structure
 
 ```
-ymca-smart-app/
-├── index.html              # Main application interface
-├── launch.html             # SMART launch entry point
-├── app.js                  # Application logic
-├── package.json            # Node.js dependencies
-├── smart-app-manifest.json # SMART app configuration
-└── README.md              # This file
+ymca-smart-app/ 
+├── index.html # Main application interface 
+├── launch.html # SMART launch entry point 
+├── app.js # Application logic 
+├── package.json # Node.js dependencies 
+├── smart-app-manifest.json # SMART app configuration 
+├── README.md # Project documentation 
+├── src/ 
+│ ├── fhir/ # FHIR‐related business logic and API integrations (e.g. creating patients & referrals).
+│ ├── ui/ # DOM‐manipulation and UI components (display helpers, form handlers, error banners).
+│ └── utils/ # hared utility functions (data formatting, patient/observation helpers).
+├── tests/ # Unit tests covering your FHIR, UI, and utility modules.
+│ ├── fhir/ # Tests for FHIR workflows (ensure/create patient, submit referrals).
+│ ├── ui/ # Tests for UI behavior (displayPatientInfo, showError, form submission).
+│ └── utils/ # Tests for helper utilities (name/address formatting, observation parsing).
 ```
 
 ## SMART on FHIR Flow
@@ -157,6 +165,31 @@ The app includes comprehensive error handling:
 - Missing patient data
 - FHIR server errors
 
+## Running Unit Tests
+
+We use Jest to validate all helper functions, UI components, and FHIR workflows.
+
+1. Install dependencies (if you haven’t already):
+   ```bash
+   npm install
+   ```
+
+2. Run the full test suite:
+   ```bash
+   npm test
+   ```
+
+3. Run a single test file (e.g. the UI display tests):
+   ```bash
+   npm test -- __tests__/ui/display.test.js
+   ```
+
+4. Run tests in watch mode during development:
+   ```bash
+   npm test -- --watch
+   ```
+
+All tests live under __tests__ (for referral, error, display, form) and test/ui (for helpers, form, error, display) and are executed by Jest with a JSDOM environment for DOM-related code.
 
 ## Security Considerations
 
