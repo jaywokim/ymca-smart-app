@@ -135,7 +135,7 @@ ymca-smart-app/
 │ ├── fhir/ # FHIR‐related business logic and API integrations (e.g. creating patients & referrals).
 │ ├── ui/ # DOM‐manipulation and UI components (display helpers, form handlers, error banners).
 │ └── utils/ # hared utility functions (data formatting, patient/observation helpers).
-├── tests/ # Unit tests covering your FHIR, UI, and utility modules.
+├── __tests__/ # Unit tests covering your FHIR, UI, and utility modules.
 │ ├── fhir/ # Tests for FHIR workflows (ensure/create patient, submit referrals).
 │ ├── ui/ # Tests for UI behavior (displayPatientInfo, showError, form submission).
 │ └── utils/ # Tests for helper utilities (name/address formatting, observation parsing).
