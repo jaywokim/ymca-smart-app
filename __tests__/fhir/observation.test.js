@@ -6,12 +6,12 @@ import { jest } from '@jest/globals';
 const mockRequest = jest.fn();
 const mockClient = { request: mockRequest };
 
-await jest.unstable_mockModule('../src/fhir/client.js', () => ({
+await jest.unstable_mockModule('../../src/fhir/client.js', () => ({
   __esModule: true,
   getFhirClient: () => mockClient
 }));
 
-await jest.unstable_mockModule('../src/ui/display.js', () => ({
+await jest.unstable_mockModule('../../src/ui/display.js', () => ({
   __esModule: true,
   displayVitalSigns:    jest.fn(),
   displayEmptyVitals:   jest.fn(),
@@ -25,16 +25,16 @@ const {
   loadObservations,
   getObservationName,
   getObservationValue
-} = await import('../src/fhir/observation.js');
+} = await import('../../src/fhir/observation.js');
 
 // and grab the mocks you just defined
-const { getFhirClient } = await import('../src/fhir/client.js');
+const { getFhirClient } = await import('../../src/fhir/client.js');
 const {
   displayVitalSigns,
   displayEmptyVitals,
   displayObservations,
   displayEmptyObservations
-} = await import('../src/ui/display.js');
+} = await import('../../src/ui/display.js');
 
 describe('getObservationName', () => {
   it('returns code.text if present', () => {

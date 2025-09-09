@@ -11,7 +11,7 @@ describe('FHIR Client', () => {
 
     // Mock the global FHIR (loaded via CDN in production)
     globalThis.FHIR = { oauth2: { ready: jest.fn() } };
-    ({ initializeFhirClient, getFhirClient } = await import('../src/fhir/client.js'));
+    ({ initializeFhirClient, getFhirClient } = await import('../../src/fhir/client.js'));
   });
 
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe('FHIR Client', () => {
     // Reset module state so fhirClient is null
     jest.resetModules();
     globalThis.FHIR = { oauth2: { ready: jest.fn() } };
-    const { getFhirClient } = await import('../src/fhir/client.js');
+    const { getFhirClient } = await import('../../src/fhir/client.js');
 
     expect(() => getFhirClient()).toThrow('FHIR client is not initialized');
   });

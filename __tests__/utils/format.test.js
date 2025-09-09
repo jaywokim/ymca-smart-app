@@ -1,4 +1,4 @@
-import { formatDate } from '../src/utils/format.js';
+import { formatDate } from '../../src/utils/format.js';
 
 describe('formatDate', () => {
     it('formats valid ISO date-time string', () => {

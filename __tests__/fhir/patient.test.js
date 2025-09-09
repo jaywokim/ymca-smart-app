@@ -3,7 +3,7 @@ import {
     getPatientIdentifier,
     getPatientAddress,
     getPatientPhone
-} from '../src/fhir/patient.js';
+} from '../../src/fhir/patient.js';
 
 describe('Patient Utility Functions', () => {
     describe('getPatientName', () => {
