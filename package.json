@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "SMART on FHIR application for YMCA health data integration",
   "main": "index.html",
+  "type": "module",
   "scripts": {
     "start": "npx http-server . -p 3000 -c-1",
     "dev": "npx http-server . -p 3000 -c-1 --cors",
-    "test": "jest"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "keywords": [
     "smart-on-fhir",
@@ -23,8 +24,5 @@
   },
   "dependencies": {
     "fhirclient": "^2.5.2"
-  },
-  "jest": {
-    "testEnvironment": "jsdom"
   }
 }

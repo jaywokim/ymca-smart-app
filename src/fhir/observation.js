@@ -91,6 +91,15 @@ function getObservationValue(observation) {
             return observation.valueCodeableConcept.coding[0].display || observation.valueCodeableConcept.coding[0].code;
         }
     }
+
+    if (observation.component && observation.component.length > 0) {
+        // Handle components (like blood pressure)
+        return observation.component.map(comp => {
+            const compValue = getObservationValue(comp);
+            const compName = getObservationName(comp);
+            return `${compName}: ${compValue}`;
+        }).join(', ');
+    }
     
     return 'No value';
 }
