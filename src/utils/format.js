@@ -5,7 +5,7 @@
  * @param {string} dateString - The date string to format
  * @returns {string} - Formatted date
  */
-export function formatDate(dateString) {
+function formatDate(dateString) {
     if (!dateString) return 'Unknown';
     
     try {
@@ -19,3 +19,5 @@ export function formatDate(dateString) {
         return dateString;
     }
 }
+
+export { formatDate };

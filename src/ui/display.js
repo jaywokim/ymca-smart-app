@@ -11,8 +11,7 @@ import {
 } from '../utils/helpers.js';
 import { formatDate } from '../utils/format.js';
 
-
-export function displayPatientInfo(patient) {
+function displayPatientInfo(patient) {
     const patientInfoContainer = document.getElementById('patient-info');
     
     const name = getPatientName(patient);
@@ -50,7 +49,7 @@ export function displayPatientInfo(patient) {
     `;
 }
 
-export function displayVitalSigns(vitalEntries) {
+function displayVitalSigns(vitalEntries) {
     const vitalsContainer = document.getElementById('vitals');
     
     const vitalsMap = new Map();
@@ -90,7 +89,7 @@ export function displayVitalSigns(vitalEntries) {
     vitalsContainer.innerHTML = vitalsHtml;
 }
 
-export function displayObservations(observationEntries) {
+function displayObservations(observationEntries) {
     const observationsContainer = document.getElementById('observations');
     
     let observationsHtml = '';
@@ -115,7 +114,7 @@ export function displayObservations(observationEntries) {
     observationsContainer.innerHTML = observationsHtml;
 }
 
-export function displayEmptyVitals() {
+function displayEmptyVitals() {
     document.getElementById('vitals').innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
             <div class="empty-icon">💓</div>
@@ -124,7 +123,7 @@ export function displayEmptyVitals() {
     `;
 }
 
-export function displayEmptyObservations() {
+function displayEmptyObservations() {
     document.getElementById('observations').innerHTML = `
         <div class="empty-state">
             <div class="empty-icon">📊</div>
@@ -136,8 +135,17 @@ export function displayEmptyObservations() {
 /**
  * Update the user name in the header
  */
-export function updateUserName(patient) {
+function updateUserName(patient) {
     const userName = document.getElementById('user-name');
     const name = getPatientName(patient);
     userName.textContent = name;
 }
+
+export {
+    displayPatientInfo,
+    displayVitalSigns,
+    displayObservations,
+    displayEmptyVitals,
+    displayEmptyObservations,
+    updateUserName
+};

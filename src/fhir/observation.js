@@ -13,7 +13,7 @@ import {
  * @param {string} patientId - The ID of the patient
  * @returns {Promise<Array>} - A promise that resolves to an array of vital signs
  */
-export async function loadVitalSigns(patientId) {
+async function loadVitalSigns(patientId) {
     try {
         const fhirClient = getFhirClient();
         const observations = await fhirClient.request(`Observation?patient=${patientId}&category=vital-signs&_sort=-date&_count=10`);
@@ -34,7 +34,7 @@ export async function loadVitalSigns(patientId) {
  * @param {string} patientId - The ID of the patient
  * @returns {Promise<Array>} - A promise that resolves to an array of observations
  */
-export async function loadObservations(patientId) {
+async function loadObservations(patientId) {
     try {
         const fhirClient = getFhirClient();
         const observations = await fhirClient.request(`Observation?patient=${patientId}&_sort=-date&_count=20`);
@@ -55,7 +55,7 @@ export async function loadObservations(patientId) {
  * @param {Object} observation - The observation resource
  * @returns {string} - The name or display of the observation
  */
-export function getObservationName(observation) {
+function getObservationName(observation) {
     if (observation.code) {
         if (observation.code.text) {
             return observation.code.text;
@@ -72,7 +72,7 @@ export function getObservationName(observation) {
  * @param {Object} observation - The observation resource
  * @returns {string} - The value of the observation with units
  */
-export function getObservationValue(observation) {
+function getObservationValue(observation) {
     if (observation.valueQuantity) {
         const value = observation.valueQuantity.value;
         const unit = observation.valueQuantity.unit || observation.valueQuantity.code || '';
@@ -94,3 +94,10 @@ export function getObservationValue(observation) {
     
     return 'No value';
 }
+
+export {
+    loadVitalSigns,
+    loadObservations,
+    getObservationName,
+    getObservationValue
+};

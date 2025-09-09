@@ -22,31 +22,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Hide loading and show content
         document.getElementById('loading').style.display = 'none';
         document.getElementById('content').style.display = 'block';
-        // displayPatientInfo(patientData);
-        // updateUserName(patientData);
-        
-        // await Promise.all([
-        //     loadVitalSigns(patientData.id),
-        //     loadObservations(patientData.id)
-        // ]);
-        
+
     } catch (error) {
         console.error('Error initializing app:', error);
         showError('Failed to initialize the application: ' + error.message);
     }
 });
-
-// Expose utility functions for testing if in Node.js environment
-// if (typeof module !== 'undefined' && module.exports) {
-//     module.exports = {
-//         initializeApp,
-//         loadPatientData,
-//         displayPatientInfo,
-//         loadVitalSigns,
-//         loadObservations,
-//         submitYmcaReferral,
-//         showError,
-//         handleReferralSubmission,
-//         updateUserName
-//     };
-// }

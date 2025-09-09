@@ -1,6 +1,6 @@
 // This file contains various helper functions used throughout the application.
 
-export function getPatientName(patient) {
+function getPatientName(patient) {
     if (patient.name && patient.name.length > 0) {
         const name = patient.name[0];
         const given = name.given ? name.given.join(' ') : '';
@@ -10,7 +10,7 @@ export function getPatientName(patient) {
     return 'Unknown';
 }
 
-export function getPatientIdentifier(patient, type) {
+function getPatientIdentifier(patient, type) {
     if (patient.identifier) {
         const identifier = patient.identifier.find(id => 
             id.type && id.type.coding && 
@@ -21,7 +21,7 @@ export function getPatientIdentifier(patient, type) {
     return null;
 }
 
-export function getPatientAddress(patient) {
+function getPatientAddress(patient) {
     if (patient.address && patient.address.length > 0) {
         const address = patient.address[0];
         const parts = [];
@@ -34,7 +34,7 @@ export function getPatientAddress(patient) {
     return 'Not available';
 }
 
-export function getPatientPhone(patient) {
+function getPatientPhone(patient) {
     if (patient.telecom) {
         const phone = patient.telecom.find(contact => contact.system === 'phone');
         return phone ? phone.value : 'Not available';
@@ -42,7 +42,7 @@ export function getPatientPhone(patient) {
     return 'Not available';
 }
 
-export function getObservationName(observation) {
+function getObservationName(observation) {
     if (observation.code) {
         if (observation.code.text) {
             return observation.code.text;
@@ -54,7 +54,7 @@ export function getObservationName(observation) {
     return 'Unknown Observation';
 }
 
-export function getObservationValue(observation) {
+function getObservationValue(observation) {
     if (observation.valueQuantity) {
         const value = observation.valueQuantity.value;
         const unit = observation.valueQuantity.unit || observation.valueQuantity.code || '';
@@ -85,7 +85,7 @@ export function getObservationValue(observation) {
     return 'No value';
 }
 
-export function getVitalType(code, display) {
+function getVitalType(code, display) {
     const vitalTypes = {
         '8310-5': { key: 'temperature', label: 'Temperature' },
         '8867-4': { key: 'heartRate', label: 'Heart Rate' },
@@ -102,3 +102,13 @@ export function getVitalType(code, display) {
     return vitalTypes[code] || (display && display.toLowerCase().includes('vital') ? 
         { key: code, label: display } : null);
 }
+
+export {
+    getPatientName,
+    getPatientIdentifier,
+    getPatientAddress,
+    getPatientPhone,
+    getObservationName,
+    getObservationValue,
+    getVitalType
+};

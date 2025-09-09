@@ -6,7 +6,7 @@ import { loadVitalSigns, loadObservations } from './observation.js';
 /**
  * Get patient's full name
  */
-export function getPatientName(patient) {
+function getPatientName(patient) {
     if (patient.name && patient.name.length > 0) {
         const name = patient.name[0];
         const given = name.given ? name.given.join(' ') : '';
@@ -19,7 +19,7 @@ export function getPatientName(patient) {
 /**
  * Get patient identifier by type
  */
-export function getPatientIdentifier(patient, type) {
+function getPatientIdentifier(patient, type) {
     if (patient.identifier) {
         const identifier = patient.identifier.find(id => 
             id.type && id.type.coding && 
@@ -33,7 +33,7 @@ export function getPatientIdentifier(patient, type) {
 /**
  * Get patient address
  */
-export function getPatientAddress(patient) {
+function getPatientAddress(patient) {
     if (patient.address && patient.address.length > 0) {
         const address = patient.address[0];
         const parts = [];
@@ -49,7 +49,7 @@ export function getPatientAddress(patient) {
 /**
  * Get patient phone number
  */
-export function getPatientPhone(patient) {
+function getPatientPhone(patient) {
     if (patient.telecom) {
         const phone = patient.telecom.find(contact => contact.system === 'phone');
         return phone ? phone.value : 'Not available';
@@ -57,7 +57,7 @@ export function getPatientPhone(patient) {
     return 'Not available';
 }
 
-export async function loadPatientData() {
+async function loadPatientData() {
     try {
         // Get current patient
         const fhirClient = await getFhirClient();
@@ -82,3 +82,11 @@ export async function loadPatientData() {
         throw new Error('Unable to load patient information');
     }
 }
+
+export {
+    getPatientName,
+    getPatientIdentifier,
+    getPatientAddress,
+    getPatientPhone,
+    loadPatientData
+};
