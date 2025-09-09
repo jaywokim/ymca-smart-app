@@ -189,7 +189,7 @@ We use Jest to validate all helper functions, UI components, and FHIR workflows.
    npm test -- --watch
    ```
 
-All tests live under __tests__ (for referral, error, display, form) and test/ui (for helpers, form, error, display) and are executed by Jest with a JSDOM environment for DOM-related code.
+All tests live under __tests__ (for referral, error, display, form, helpers) and are executed by Jest with a JSDOM environment for DOM-related code.
 
 ## Security Considerations
 
