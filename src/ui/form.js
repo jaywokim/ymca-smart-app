@@ -1,12 +1,14 @@
 // This file manages the referral form, including validation, submission handling, and resetting the form after submission.
 
 import { submitYmcaReferral } from '../fhir/referral.js';
+import { loadPatientData } from '../fhir/patient.js';
 
 async function handleReferralSubmission() {
     const programSelect = document.getElementById('program-select');
     const prioritySelect = document.getElementById('priority-select');
     const notesTextarea = document.getElementById('referral-notes');
     const submitBtn = document.getElementById('submit-referral-btn');
+    const patientData = await loadPatientData();
 
     // Validate form
     if (!programSelect.value) {
@@ -20,6 +22,7 @@ async function handleReferralSubmission() {
 
     try {
         await submitYmcaReferral(
+            patientData,
             programSelect.value,
             prioritySelect.value,
             notesTextarea.value
