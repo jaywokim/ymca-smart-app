@@ -1,5 +1,22 @@
 import { jest } from '@jest/globals';
 
+// --- new: mock FHIR client before loading referral module ---
+const mockRequest = jest.fn((url, opts) =>
+  global.fetch(url, opts).then(async resp => {
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`FHIR server error: ${resp.status} - ${txt}`);
+    }
+    return resp.json();
+  })
+);
+
+await jest.unstable_mockModule('../../src/fhir/client.js', () => ({
+  __esModule: true,
+  getFhirClient: () => ({ request: mockRequest })
+}));
+// --- end new mock ---
+
 // src/fhir/referral.test.js
 
 const mockGetPatientName = jest.fn();
@@ -167,7 +184,7 @@ describe('submitYmcaReferral', () => {
                 json: () => Promise.resolve({ id: 'r1' })
             });
 
-        const result = await submitYmcaReferral(null, {}, 'Swim', 'routine', 'notes');
+        const result = await submitYmcaReferral({}, 'Swim', 'routine', 'notes');
         expect(result).toEqual({ id: 'r1' });
         expect(global.fetch).toHaveBeenCalledTimes(2);
         expect(global.fetch.mock.calls[1][0]).toMatch(/\/ServiceRequest$/);
@@ -187,7 +204,7 @@ describe('submitYmcaReferral', () => {
                 text: () => Promise.resolve('Server down')
             });
 
-        await expect(submitYmcaReferral(null, {}, 'Run'))
+        await expect(submitYmcaReferral({}, 'Run'))
             .rejects.toThrow('FHIR server error: 500 - Server down');
     });
 });

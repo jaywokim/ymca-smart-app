@@ -3,15 +3,18 @@
 
 const localFhirServer = 'http://localhost:8080/fhir'; // Local HAPI FHIR server
 import { getPatientName } from '../fhir/patient.js';
+import { getFhirClient } from '../fhir/client.js';
 
 /**
  * Submit a referral to local HAPI FHIR server
  */
-async function submitYmcaReferral(fhirClient, patientData, programType, priority = 'routine', notes = '') {
+async function submitYmcaReferral(patientData, programType, priority = 'routine', notes = '') {
     try {
         if (!patientData) {
             throw new Error('Patient data not available');
         }
+
+        const fhirClient = await getFhirClient();
 
         // First, ensure patient exists in local HAPI FHIR server
         const localPatient = await ensurePatientInLocalFhir(fhirClient, patientData);
