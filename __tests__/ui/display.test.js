@@ -6,23 +6,36 @@ import { jest } from '@jest/globals';
 // 1. Mock utils/helpers.js
 await jest.unstable_mockModule('../../src/utils/helpers.js', () => ({
   __esModule: true,
+  getVitalType: jest.fn()
+}));
+
+// 2. Mock fhir/patient.js
+await jest.unstable_mockModule('../../src/fhir/patient.js', () => ({
+  __esModule: true,
   getPatientName: jest.fn(),
   getPatientIdentifier: jest.fn(),
   getPatientAddress: jest.fn(),
-  getPatientPhone: jest.fn(),
-  getVitalType: jest.fn(),
+  getPatientPhone: jest.fn()
+}));
+
+// 3. Mock utils/observation.js
+await jest.unstable_mockModule('../../src/fhir/observation.js', () => ({
+  __esModule: true,
   getObservationValue: jest.fn(),
   getObservationName: jest.fn(),
 }));
 
-// 2. Mock utils/format.js
+
+// 4. Mock utils/format.js
 await jest.unstable_mockModule('../../src/utils/format.js', () => ({
   __esModule: true,
   formatDate: jest.fn(),
 }));
 
-// 3. Import mocks and module under test
+// 5. Import mocks and module under test
 const helpers = await import('../../src/utils/helpers.js');
+const patients = await import('../../src/fhir/patient.js');
+const observation = await import('../../src/fhir/observation.js');
 const { formatDate } = await import('../../src/utils/format.js');
 const {
   displayPatientInfo,
@@ -36,10 +49,10 @@ const {
 describe('displayPatientInfo', () => {
   beforeEach(() => {
     document.body.innerHTML = `<div id="patient-info"></div>`;
-    helpers.getPatientName.mockReturnValue('John Doe');
-    helpers.getPatientIdentifier.mockReturnValue('MR123');
-    helpers.getPatientAddress.mockReturnValue('123 Main St');
-    helpers.getPatientPhone.mockReturnValue('(555) 123-4567');
+    patients.getPatientName.mockReturnValue('John Doe');
+    patients.getPatientIdentifier.mockReturnValue('MR123');
+    patients.getPatientAddress.mockReturnValue('123 Main St');
+    patients.getPatientPhone.mockReturnValue('(555) 123-4567');
     formatDate.mockReturnValue('01/01/1990');
   });
 
@@ -57,10 +70,10 @@ describe('displayPatientInfo', () => {
   });
 
   it('falls back to Unknown when fields are missing', () => {
-    helpers.getPatientName.mockReturnValue('Unknown Name');
-    helpers.getPatientIdentifier.mockReturnValue(null);
-    helpers.getPatientAddress.mockReturnValue('');
-    helpers.getPatientPhone.mockReturnValue('');
+    patients.getPatientName.mockReturnValue('Unknown Name');
+    patients.getPatientIdentifier.mockReturnValue(null);
+    patients.getPatientAddress.mockReturnValue('');
+    patients.getPatientPhone.mockReturnValue('');
     formatDate.mockReturnValue('Unknown');
 
     displayPatientInfo({});
@@ -75,7 +88,7 @@ describe('displayVitalSigns', () => {
   beforeEach(() => {
     document.body.innerHTML = `<div id="vitals"></div>`;
     helpers.getVitalType.mockClear();
-    helpers.getObservationValue.mockClear();
+    observation.getObservationValue.mockClear();
   });
 
   it('shows most recent vitals', () => {
@@ -85,7 +98,7 @@ describe('displayVitalSigns', () => {
       { resource: { code: { coding: [{ code: 'HR', display: 'Heart Rate' }] }, effectiveDateTime: '2025-02-01T00:00:00Z' } }
     ];
     helpers.getVitalType.mockReturnValue({ key: 'heartRate', label: 'Heart Rate' });
-    helpers.getObservationValue.mockReturnValue('75 bpm');
+    observation.getObservationValue.mockReturnValue('75 bpm');
 
     displayVitalSigns(entries);
     const html = document.getElementById('vitals').innerHTML;
@@ -103,8 +116,8 @@ describe('displayVitalSigns', () => {
 describe('displayObservations', () => {
   beforeEach(() => {
     document.body.innerHTML = `<div id="observations"></div>`;
-    helpers.getObservationName.mockClear();
-    helpers.getObservationValue.mockClear();
+    observation.getObservationName.mockClear();
+    observation.getObservationValue.mockClear();
     formatDate.mockClear();
   });
 
@@ -113,8 +126,8 @@ describe('displayObservations', () => {
     for (let i = 0; i < 12; i++) {
       obs.push({ resource: { effectiveDateTime: `2025-03-0${i+1}`, issued: `2025-03-0${i+1}` } });
     }
-    helpers.getObservationName.mockImplementation((o) => `Obs${o.effectiveDateTime}`);
-    helpers.getObservationValue.mockImplementation(() => 'ValueX');
+    observation.getObservationName.mockImplementation((o) => `Obs${o.effectiveDateTime}`);
+    observation.getObservationValue.mockImplementation(() => 'ValueX');
     formatDate.mockImplementation((d) => `Fmt${d}`);
 
     displayObservations(obs);
@@ -136,7 +149,7 @@ describe('displayObservations', () => {
 describe('updateUserName', () => {
   it('updates header text', () => {
     document.body.innerHTML = `<span id="user-name"></span>`;
-    helpers.getPatientName.mockReturnValue('Jane Doe');
+    patients.getPatientName.mockReturnValue('Jane Doe');
     updateUserName({});
 
     expect(document.getElementById('user-name').textContent).toBe('Jane Doe');

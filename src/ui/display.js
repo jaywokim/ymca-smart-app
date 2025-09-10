@@ -1,26 +1,30 @@
 // src/ui/display.js
 
-import { 
-    getPatientName, 
-    getPatientIdentifier, 
-    getPatientAddress, 
-    getPatientPhone, 
-    getVitalType, 
-    getObservationValue, 
-    getObservationName 
+import {
+    getPatientName,
+    getPatientIdentifier,
+    getPatientAddress,
+    getPatientPhone
+} from '../fhir/patient.js';
+import {
+    getObservationValue,
+    getObservationName
+} from '../fhir/observation.js';
+import {
+    getVitalType
 } from '../utils/helpers.js';
 import { formatDate } from '../utils/format.js';
 
 function displayPatientInfo(patient) {
     const patientInfoContainer = document.getElementById('patient-info');
-    
+
     const name = getPatientName(patient);
     const birthDate = patient.birthDate || 'Unknown';
     const gender = patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : 'Unknown';
     const mrn = getPatientIdentifier(patient, 'MR') || 'Not available';
     const address = getPatientAddress(patient);
     const phone = getPatientPhone(patient);
-    
+
     patientInfoContainer.innerHTML = `
         <div class="info-item">
             <div class="info-label">Full Name</div>
@@ -51,16 +55,16 @@ function displayPatientInfo(patient) {
 
 function displayVitalSigns(vitalEntries) {
     const vitalsContainer = document.getElementById('vitals');
-    
+
     const vitalsMap = new Map();
-    
+
     vitalEntries.forEach(entry => {
         const observation = entry.resource;
         if (observation.code && observation.code.coding) {
             const coding = observation.code.coding[0];
             const vitalType = getVitalType(coding.code, coding.display);
-            
-            if (vitalType && (!vitalsMap.has(vitalType.key) || 
+
+            if (vitalType && (!vitalsMap.has(vitalType.key) ||
                 new Date(observation.effectiveDateTime) > new Date(vitalsMap.get(vitalType.key).date))) {
                 vitalsMap.set(vitalType.key, {
                     type: vitalType,
@@ -70,12 +74,12 @@ function displayVitalSigns(vitalEntries) {
             }
         }
     });
-    
+
     if (vitalsMap.size === 0) {
         displayEmptyVitals();
         return;
     }
-    
+
     let vitalsHtml = '';
     vitalsMap.forEach(vital => {
         vitalsHtml += `
@@ -85,21 +89,21 @@ function displayVitalSigns(vitalEntries) {
             </div>
         `;
     });
-    
+
     vitalsContainer.innerHTML = vitalsHtml;
 }
 
 function displayObservations(observationEntries) {
     const observationsContainer = document.getElementById('observations');
-    
+
     let observationsHtml = '';
-    
+
     observationEntries.slice(0, 10).forEach(entry => {
         const observation = entry.resource;
         const name = getObservationName(observation);
         const value = getObservationValue(observation);
         const date = observation.effectiveDateTime || observation.issued;
-        
+
         observationsHtml += `
             <div class="observation-item">
                 <div>
@@ -110,7 +114,7 @@ function displayObservations(observationEntries) {
             </div>
         `;
     });
-    
+
     observationsContainer.innerHTML = observationsHtml;
 }
 

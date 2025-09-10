@@ -2,7 +2,7 @@
 // It includes logic for ensuring patient existence and handling referral submissions.
 
 const localFhirServer = 'http://localhost:8080/fhir'; // Local HAPI FHIR server
-import { getPatientName } from '../utils/helpers.js';
+import { getPatientName } from '../fhir/patient.js';
 
 /**
  * Submit a referral to local HAPI FHIR server

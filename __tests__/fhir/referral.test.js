@@ -5,7 +5,7 @@ import { jest } from '@jest/globals';
 const mockGetPatientName = jest.fn();
 
 // 1. Mock getPatientName before loading referral module
-await jest.unstable_mockModule('../../src/utils/helpers.js', () => ({
+await jest.unstable_mockModule('../../src/fhir/patient.js', () => ({
     __esModule: true,
     getPatientName: mockGetPatientName
 }));

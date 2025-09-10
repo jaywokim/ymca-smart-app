@@ -2,14 +2,7 @@
 
 import { initializeFhirClient, getFhirClient } from './fhir/client.js';
 import { loadPatientData } from './fhir/patient.js';
-import { loadVitalSigns, loadObservations } from './fhir/observation.js';
-import { submitYmcaReferral } from './fhir/referral.js';
 import { showError } from './ui/error.js';
-import { handleReferralSubmission } from './ui/form.js';
-import { updateUserName, displayPatientInfo } from './ui/display.js';
-
-let fhirClient = null;
-let patientData = null;
 
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', async function() {
