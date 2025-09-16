@@ -1,23 +1,63 @@
-// This file contains various helper functions used throughout the application.
+import { VITAL_TYPES_URL } from '../config/appConfig.js';
 
-function getVitalType(code, display) {
-    const vitalTypes = {
-        '8310-5': { key: 'temperature', label: 'Temperature' },
-        '8867-4': { key: 'heartRate', label: 'Heart Rate' },
-        '9279-1': { key: 'respiratoryRate', label: 'Respiratory Rate' },
-        '85354-9': { key: 'bloodPressure', label: 'Blood Pressure' },
-        '8480-6': { key: 'systolic', label: 'Systolic BP' },
-        '8462-4': { key: 'diastolic', label: 'Diastolic BP' },
-        '2708-6': { key: 'oxygenSat', label: 'Oxygen Saturation' },
-        '29463-7': { key: 'weight', label: 'Weight' },
-        '8302-2': { key: 'height', label: 'Height' },
-        '39156-5': { key: 'bmi', label: 'BMI' }
-    };
-    
-    return vitalTypes[code] || (display && display.toLowerCase().includes('vital') ? 
-        { key: code, label: display } : null);
+let _vitalTypes = null;
+let _vitalTypesPromise = null;
+
+/**
+ * Load the vitalTypes map from JSON on first call or when forced
+ * @param {boolean} [force=false]
+ */
+async function loadVitalTypes(force = false) {
+  // if we haven’t ever loaded, or the caller wants to force reload…
+  if (!_vitalTypes || force) {
+    // if no fetch is in flight, or we force a new one, start it now
+    if (! _vitalTypesPromise || force) {
+      _vitalTypesPromise = (async () => {
+        if (typeof window === 'undefined') {
+          // Node.js path
+          const { readFile } = await import('fs/promises');
+          const { resolve } = await import('path');
+          const relativeUrl = VITAL_TYPES_URL.replace(/^\/+/, '');
+          const filePath = resolve(process.cwd(), relativeUrl);
+          const text = await readFile(filePath, 'utf-8');
+          return JSON.parse(text);
+        } else {
+          // browser path
+          const resp = await fetch(
+            VITAL_TYPES_URL,
+            { cache: force ? 'no-cache' : 'default' }
+          );
+          return await resp.json();
+        }
+      })();
+    }
+    // wait for that one promise, assign to cache
+    _vitalTypes = await _vitalTypesPromise;
+  }
+  return _vitalTypes;
+}
+
+/**
+ * Lookup, auto-loading vitalTypes.json if needed.
+ */
+async function getVitalType(code, display, force = false) {
+  if (!_vitalTypes || force) {
+    await loadVitalTypes(force);
+  }
+  const vt = _vitalTypes || {};
+  return vt[code] ||
+         (display && display.toLowerCase().includes('vital')
+           ? { key: code, label: display }
+           : null);
+}
+
+function clearVitalTypesCache() {
+  _vitalTypes = null;
+  _vitalTypesPromise = null;
 }
 
 export {
-    getVitalType
+  loadVitalTypes,
+  getVitalType,
+  clearVitalTypesCache
 };
