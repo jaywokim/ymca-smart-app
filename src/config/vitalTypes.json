@@ -1,0 +1,12 @@
+{
+    "8310-5": { "key": "temperature", "label": "Temperature" },
+    "8867-4": { "key": "heartRate", "label": "Heart Rate" },
+    "9279-1": { "key": "respiratoryRate", "label": "Respiratory Rate" },
+    "85354-9": { "key": "bloodPressure", "label": "Blood Pressure" },
+    "8480-6": { "key": "systolic", "label": "Systolic BP" },
+    "8462-4": { "key": "diastolic", "label": "Diastolic BP" },
+    "2708-6": { "key": "oxygenSat", "label": "Oxygen Saturation" },
+    "29463-7": { "key": "weight", "label": "Weight" },
+    "8302-2": { "key": "height", "label": "Height" },
+    "39156-5": { "key": "bmi", "label": "BMI" }
+}
