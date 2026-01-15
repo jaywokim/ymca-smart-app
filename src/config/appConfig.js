@@ -1,0 +1,1 @@
+export const VITAL_TYPES_URL = "/src/config/vitalTypes.json";
