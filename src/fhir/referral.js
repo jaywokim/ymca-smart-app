@@ -4,6 +4,10 @@
 const localFhirServer = 'http://localhost:8080/fhir'; // Local HAPI FHIR server
 import { getPatientName } from '../fhir/patient.js';
 import { getFhirClient } from '../fhir/client.js';
+import {
+    buildConditionReasonReferences,
+    fetchDiabetesConditions
+} from './conditions.js';
 
 /**
  * Submit a referral to local HAPI FHIR server
@@ -13,14 +17,37 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
         if (!patientData) {
             throw new Error('Patient data not available');
         }
+        console.log('starting referral submission for patient:');
 
         const fhirClient = await getFhirClient();
 
         // First, ensure patient exists in local HAPI FHIR server
-        const localPatient = await ensurePatientInLocalFhir(fhirClient, patientData);
-        
+        let localPatient;
+        try {
+            localPatient = await ensurePatientInLocalFhir(fhirClient, patientData);
+            console.log('Local patient record:', localPatient);
+        } catch (error) {
+            console.warn('Unable to reach local HAPI FHIR patient endpoint, falling back to SMART patient data', error);
+            localPatient = await fetchPatientFromSmartClient(fhirClient);
+        }
+
+        if (!localPatient) {
+            localPatient = await fetchPatientFromSmartClient(fhirClient);
+        }
+
+        if (!localPatient) {
+            throw new Error('Unable to resolve patient data for referral');
+        }
+
+        // Fetch diabetes conditions from the EHR so the referral can reference them
+        const diabetesConditions = await fetchDiabetesConditions(fhirClient, patientData?.id);
+        const reasonReferences = buildConditionReasonReferences(diabetesConditions);
+
+        console.log('Diabetes condition references for referral:', reasonReferences);
         // Create FHIR ServiceRequest for YMCA referral
-        const serviceRequest = createServiceRequest(localPatient, programType, priority, notes);
+        const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences);
+
+        console.log('Submitting ServiceRequest:', serviceRequest);
 
         // Submit to local HAPI FHIR server
         const response = await fetch(`${localFhirServer}/ServiceRequest`, {
@@ -129,7 +156,25 @@ async function createPatientInLocalFhir(patientData) {
 /**
  * Create a ServiceRequest object for the referral
  */
-function createServiceRequest(localPatient, programType, priority, notes) {
+function createServiceRequest(localPatient, programType, priority, notes, reasonReferences = []) {
+    const normalizedReasonReferences = (Array.isArray(reasonReferences) ? reasonReferences : [])
+        .map(ref => {
+            const normalized = {
+                type: ref?.type || 'Condition'
+            };
+            if (ref?.reference) {
+                normalized.reference = ref.reference;
+            }
+            if (ref?.display) {
+                normalized.display = ref.display;
+            }
+            if (ref?.identifier) {
+                normalized.identifier = ref.identifier;
+            }
+            return normalized;
+        })
+        .filter(ref => ref.reference || ref.display || ref.identifier);
+
     return {
         resourceType: 'ServiceRequest',
         status: 'active',
@@ -180,6 +225,7 @@ function createServiceRequest(localPatient, programType, priority, notes) {
                 text: notes || `Patient referral for ${programType} program based on health assessment`
             }
         ],
+        reasonReference: normalizedReasonReferences,
         note: notes ? [
             {
                 text: notes,
@@ -187,6 +233,18 @@ function createServiceRequest(localPatient, programType, priority, notes) {
             }
         ] : []
     };
+}
+
+async function fetchPatientFromSmartClient(fhirClient) {
+    if (!fhirClient || !fhirClient.patient || typeof fhirClient.patient.read !== 'function') {
+        return null;
+    }
+    try {
+        return await fhirClient.patient.read();
+    } catch (error) {
+        console.warn('Failed to read patient from SMART client', error);
+        return null;
+    }
 }
 
 function createRequestBundle(localPatient, programType, priority, notes) {

@@ -3,6 +3,7 @@
 import { initializeFhirClient, getFhirClient } from './fhir/client.js';
 import { loadPatientData } from './fhir/patient.js';
 import { showError } from './ui/error.js';
+import { handleReferralSubmission } from './ui/form.js';
 
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', async function() {
@@ -21,3 +22,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         showError('Failed to initialize the application: ' + error.message);
     }
 });
+
+// Expose the form handler so inline onclick attributes can invoke it
+window.handleReferralSubmission = handleReferralSubmission;

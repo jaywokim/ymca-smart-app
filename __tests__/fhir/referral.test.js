@@ -52,6 +52,7 @@ describe('createServiceRequest', () => {
         expect(svc.note[0].text).toBe('Take notes');
         expect(svc.subject.reference).toBe('Patient/123');
         expect(mockGetPatientName).toHaveBeenCalledWith(localPatient);
+        expect(svc.reasonReference).toEqual([]);
     });
 
     it('should default notes to empty and set reasonCode text', () => {
@@ -59,6 +60,18 @@ describe('createServiceRequest', () => {
         const svc = createServiceRequest(localPatient, 'Swim', 'routine');
         expect(svc.note).toEqual([]);
         expect(svc.reasonCode[0].text).toContain('Patient referral for Swim');
+        expect(svc.reasonReference).toEqual([]);
+    });
+
+    it('includes provided reasonReference entries', () => {
+        const localPatient = { id: '789' };
+        const sourceRefs = [
+            { reference: 'Condition/123', display: 'Type 2 diabetes' }
+        ];
+        const svc = createServiceRequest(localPatient, 'Swim', 'routine', null, sourceRefs);
+        expect(svc.reasonReference).toEqual([
+            { reference: 'Condition/123', display: 'Type 2 diabetes', type: 'Condition' }
+        ]);
     });
 });
 
@@ -163,6 +176,7 @@ describe('ensurePatientInLocalFhir', () => {
 describe('submitYmcaReferral', () => {
     beforeEach(() => {
         global.fetch = jest.fn();
+        mockRequest.mockClear();
     });
 
     it('throws if patientData is missing', async () => {
@@ -172,39 +186,95 @@ describe('submitYmcaReferral', () => {
 
     it('submits referral when flow succeeds', async () => {
         const localPat = { id: 'p1' };
-        global.fetch
-            // search patient
-            .mockResolvedValueOnce({
-                ok: true,
-                json: () => Promise.resolve({ entry: [{ resource: localPat }] })
-            })
-            // post ServiceRequest
-            .mockResolvedValueOnce({
-                ok: true,
-                json: () => Promise.resolve({ id: 'r1' })
-            });
+        const conditionResource = {
+            resourceType: 'Condition',
+            id: 'cond-1',
+            code: {
+                text: 'Type 2 diabetes',
+                coding: [
+                    {
+                        code: '44054006',
+                        display: 'Type 2 diabetes'
+                    }
+                ]
+            }
+        };
+        global.fetch.mockImplementation((url, opts) => {
+            if (url.includes('Patient?name=')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ entry: [{ resource: localPat }] })
+                });
+            }
+            if (url.includes('Condition?patient=')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ resourceType: 'Bundle', entry: [{ resource: conditionResource }] })
+                });
+            }
+            if (url.endsWith('/ServiceRequest')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ id: 'r1' })
+                });
+            }
+            return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('Not found') });
+        });
 
-        const result = await submitYmcaReferral({}, 'Swim', 'routine', 'notes');
+        const patientPayload = { id: 'remote-1' };
+        const result = await submitYmcaReferral(patientPayload, 'Swim', 'routine', 'notes');
         expect(result).toEqual({ id: 'r1' });
-        expect(global.fetch).toHaveBeenCalledTimes(2);
-        expect(global.fetch.mock.calls[1][0]).toMatch(/\/ServiceRequest$/);
-        expect(global.fetch.mock.calls[1][1]).toMatchObject({ method: 'POST' });
+        expect(global.fetch).toHaveBeenCalledTimes(3);
+        const serviceRequestCall = global.fetch.mock.calls.find(call => call[0].includes('/ServiceRequest'));
+        expect(serviceRequestCall).toBeDefined();
+        expect(serviceRequestCall[1]).toMatchObject({ method: 'POST' });
+        expect(mockRequest).toHaveBeenCalledWith(expect.stringContaining('Condition?patient='));
+        const serviceRequestBody = JSON.parse(serviceRequestCall[1].body);
+        expect(serviceRequestBody.reasonReference).toEqual([
+            expect.objectContaining({ reference: 'Condition/cond-1', display: 'Type 2 diabetes' })
+        ]);
     });
 
     it('throws on server POST error', async () => {
         const localPat = { id: 'p2' };
-        global.fetch
-            .mockResolvedValueOnce({
-                ok: true,
-                json: () => Promise.resolve({ entry: [{ resource: localPat }] })
-            })
-            .mockResolvedValueOnce({
-                ok: false,
-                status: 500,
-                text: () => Promise.resolve('Server down')
-            });
+        const conditionResource = {
+            resourceType: 'Condition',
+            id: 'cond-2',
+            code: {
+                text: 'Type 1 diabetes',
+                coding: [
+                    {
+                        code: '46635009',
+                        display: 'Type 1 diabetes'
+                    }
+                ]
+            }
+        };
+        global.fetch.mockImplementation((url, opts) => {
+            if (url.includes('Patient?name=')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ entry: [{ resource: localPat }] })
+                });
+            }
+            if (url.includes('Condition?patient=')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ resourceType: 'Bundle', entry: [{ resource: conditionResource }] })
+                });
+            }
+            if (url.endsWith('/ServiceRequest')) {
+                return Promise.resolve({
+                    ok: false,
+                    status: 500,
+                    text: () => Promise.resolve('Server down')
+                });
+            }
+            return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('Not found') });
+        });
 
-        await expect(submitYmcaReferral({}, 'Run'))
+        const patientPayload = { id: 'remote-2' };
+        await expect(submitYmcaReferral(patientPayload, 'Run'))
             .rejects.toThrow('FHIR server error: 500 - Server down');
     });
 });
