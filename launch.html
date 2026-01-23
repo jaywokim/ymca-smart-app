@@ -16,20 +16,36 @@
 
     <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
     <script>
-        // SMART on FHIR launch sequence
-        FHIR.oauth2.authorize({
-            clientId: 'ymca-smart-app',
-            scope: 'launch patient/*.read',
-            redirectUri: window.location.origin + '/index.html'
-        }).catch(function(error) {
-            console.error('Authorization error:', error);
-            document.querySelector('.launch-container').innerHTML = `
-                <div class="logo">⚠️</div>
-                <h1>Launch Error</h1>
-                <p>Unable to launch the SMART app. Please check the console for details.</p>
-                <p style="font-size: 12px; color: #999;">${error.message}</p>
-            `;
-        });
+        (async function() {
+            try {
+                const response = await fetch('smart-app-manifest.json');
+                if (!response.ok) {
+                    throw new Error('Could not load SMART app manifest');
+                }
+                const manifest = await response.json();
+                const clientId = manifest.client_id ?? 'ymca-smart-app';
+                const scope = manifest.scope ?? 'launch patient/*.read';
+                const redirectUri = Array.isArray(manifest.redirect_uris) && manifest.redirect_uris.length
+                    ? manifest.redirect_uris[0]
+                    : window.location.origin + '/index.html';
+
+                await FHIR.oauth2.authorize({
+                    clientId,
+                    scope,
+                    redirectUri,
+                    iss: new URLSearchParams(location.search).get("iss"),
+                    launch: new URLSearchParams(location.search).get("launch")
+                });
+            } catch (error) {
+                console.error('Authorization error:', error);
+                document.querySelector('.launch-container').innerHTML = `
+                    <div class="logo">⚠️</div>
+                    <h1>Launch Error</h1>
+                    <p>Unable to launch the SMART app. Please check the console for details.</p>
+                    <p style="font-size: 12px; color: #999;">${error.message}</p>
+                `;
+            }
+        })();
     </script>
 </body>
 </html>

@@ -8,7 +8,10 @@ let fhirClient = null;
  */
 async function initializeFhirClient() {
     try {
-        fhirClient = await FHIR.oauth2.ready();
+        fhirClient = await FHIR.oauth2.ready()
+        .catch(err => {;
+          console.error(err);
+        });;
         console.log('FHIR Client initialized:', fhirClient);
         return fhirClient;
     } catch (error) {

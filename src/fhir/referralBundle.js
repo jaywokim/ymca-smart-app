@@ -95,6 +95,8 @@ async function buildReferralBundle(patientId, options = {}) {
         addResource(patient);
 
         const everything = await client.request(`Patient/${patientId}/$everything?_count=2500`);
+        console.log("everything bundle received:", everything);
+
         const { practitioners, practitionerRoles } =
         await resolvePractitionersFromBundle(client, everything);
 
