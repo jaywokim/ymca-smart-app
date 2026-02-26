@@ -45,18 +45,19 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
 
         console.log('Diabetes condition references for referral:', reasonReferences);
         // Create FHIR ServiceRequest for YMCA referral
-        const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences);
+        // const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences);
+        const bundle = createRequestBundle(localPatient, programType, priority, notes, reasonReferences);
 
-        console.log('Submitting ServiceRequest:', serviceRequest);
+        console.log('Submitting Bundle:', bundle);
 
         // Submit to local HAPI FHIR server
-        const response = await fetch(`${localFhirServer}/ServiceRequest`, {
+        const response = await fetch(`${localFhirServer}/Bundle`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/fhir+json',
                 'Accept': 'application/fhir+json'
             },
-            body: JSON.stringify(serviceRequest)
+            body: JSON.stringify(bundle)
         });
 
         if (!response.ok) {
@@ -64,8 +65,8 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
             throw new Error(`FHIR server error: ${response.status} - ${errorText}`);
         }
 
-        const createdReferral = await response.json();
-        return createdReferral;
+        const createdBundle = await response.json();
+        return createdBundle;
 
     } catch (error) {
         console.error('Error submitting referral:', error);
@@ -247,7 +248,19 @@ async function fetchPatientFromSmartClient(fhirClient) {
     }
 }
 
-function createRequestBundle(localPatient, programType, priority, notes) {
+function createRequestBundle(localPatient, programType, priority, notes, reasonReferences = []) {
+    const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences);
+
+    return {
+        resourceType: 'Bundle',
+        type: 'collection',
+        entry: [
+            {
+                fullUrl: `urn:uuid:${crypto.randomUUID()}`,
+                resource: serviceRequest
+            }
+        ]
+    };
 }
 
 // Export functions for use in other modules
