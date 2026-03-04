@@ -93,7 +93,7 @@ async function buildReferralBundle(patientId, options = {}) {
         serviceRequests.forEach(r => addResource(r));
 
         // 2) Patient
-        const patient = (await client.request(`Patient/${patientId}`));
+        const patient = options.patient || (await client.request(`Patient/${patientId}`));
         addResource(patient);
 
         const everything = await client.request(`Patient/${patientId}/$everything?_count=2500`);

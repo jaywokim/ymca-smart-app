@@ -63,14 +63,48 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
 
         // 2. Generate the comprehensive bundle using our centralized builder
         // Passing the localServiceRequest so it doesn't try to fetch a random one from the EHR
-        const bundle = await buildReferralBundle(localPatient.id, {
+        const bundle = await buildReferralBundle(patientData.id, {
             bundleType: 'transaction', 
-            serviceRequest: localServiceRequest
+            serviceRequest: localServiceRequest,
+            patient: localPatient
         });
 
         console.log('Submitting Full Integrated Bundle:', JSON.stringify(bundle, null, 2));
 
-        // Submit to local HAPI FHIR server
+        // 3. Validate the Bundle against the FHIR Server's $validate endpoint
+        console.log('Validating bundle before submission...');
+        const validateResponse = await fetch(`${localFhirServer}/Bundle/$validate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/fhir+json',
+                'Accept': 'application/fhir+json'
+            },
+            body: JSON.stringify(bundle)
+        });
+
+        // Parse the OperationOutcome
+        let operationOutcome;
+        try {
+            operationOutcome = await validateResponse.json();
+        } catch (e) {
+            const errorText = await validateResponse.text();
+            throw new Error(`FHIR validation endpoint failed to return JSON: ${validateResponse.status} - ${errorText}`);
+        }
+
+        // Check if the server returned validation errors
+        if (operationOutcome.resourceType === 'OperationOutcome') {
+            const hasErrors = operationOutcome.issue && operationOutcome.issue.some(issue => issue.severity === 'error' || issue.severity === 'fatal');
+            if (hasErrors) {
+                console.error('Bundle validation failed:', JSON.stringify(operationOutcome.issue, null, 2));
+                throw new Error('Bundle failed FHIR validation. Check console for OperationOutcome details.');
+            }
+        } else if (!validateResponse.ok) {
+            throw new Error(`FHIR validation HTTP error: ${validateResponse.status}`);
+        }
+
+        console.log('Bundle validated successfully. Proceeding with submission...');
+
+        // 4. Submit to local HAPI FHIR server
         const response = await fetch(`${localFhirServer}/Bundle`, {
             method: 'POST',
             headers: {
