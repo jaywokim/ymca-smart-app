@@ -78,14 +78,16 @@ async function buildReferralBundle(patientId, options = {}) {
 
         // 1) ServiceRequest(s)
         let serviceRequests = [];
-        if (referralId) {
+        if (options.serviceRequest) {
+            // Allows passing a pre-built ServiceRequest directly instead of fetching
+            serviceRequests = [options.serviceRequest];
+        } else if (referralId) {
             const resp = await client.request(`ServiceRequest/${referralId}`);
             serviceRequests = resourcesFromResponse(resp);
         } else {
             // Grab first referral ServiceRequest for patient
             // TODO, this should be changed before Prod I just want to continue for now
-            const resp = await client.request(`ServiceRequest?patient=${patientId}&_count=50
-                `);
+            const resp = await client.request(`ServiceRequest?patient=${patientId}&_count=50`);
             serviceRequests = resourcesFromResponse(resp);
         }
         serviceRequests.forEach(r => addResource(r));
@@ -100,7 +102,10 @@ async function buildReferralBundle(patientId, options = {}) {
         const { practitioners, practitionerRoles } =
         await resolvePractitionersFromBundle(client, everything);
 
-        console.log(practitioners);
+        console.log("Practitioners returned:", practitioners.length);
+        
+        // Format and add Practitioners to bundle
+        practitioners.map(formatPractitionerForReferral).forEach(p => p && addResource(p));
 
         // Collect references to resolve: practitioners, organizations, supportingInfo
         const refsToFetch = [];
@@ -115,15 +120,15 @@ async function buildReferralBundle(patientId, options = {}) {
         });
 
         // 3) Conditions (diabetes)
-        // const conditionResp = await client.request(`Condition?patient=${patientId}&_count=50&code=44054006,46635009`);
-        const conditionResp = await client.request(`Condition?patient=${patientId}&_count=50`);
-        const conditions = resourcesFromResponse(conditionResp);
-        conditions.forEach(c => addResource(c));
+        // Restricting specifically to diabetes SNOMED codes to avoid oversharing patient health info
+        const conditionResp = await client.request(`Condition?patient=${patientId}&_count=50&code=44054006,46635009`);
+        const conditions = resourcesFromResponse(conditionResp).map(formatConditionForReferral);
+        conditions.forEach(c => c && addResource(c));
 
         // 4) Coverage (payer info)
         const coverageResp = await client.request(`Coverage?beneficiary=Patient/${patientId}&_count=50`);
-        const coverages = resourcesFromResponse(coverageResp);
-        coverages.forEach(cov => addResource(cov));
+        const coverages = resourcesFromResponse(coverageResp).map(formatCoverageForReferral);
+        coverages.forEach(cov => cov && addResource(cov));
 
         // 5) Observations (vitals & labs)
         if (includeObservations) {
@@ -137,13 +142,13 @@ async function buildReferralBundle(patientId, options = {}) {
             ].join(',');
 
             const obsResp = await client.request(`Observation?patient=${patientId}&_count=200&code=${loincCodes}`);
-            const obs = resourcesFromResponse(obsResp);
-            obs.forEach(o => addResource(o));
+            const obs = resourcesFromResponse(obsResp).map(formatObservationForReferral);
+            obs.forEach(o => o && addResource(o));
 
             // Also include any recent vitals category observations not covered by codes
             const vitCatResp = await client.request(`Observation?patient=${patientId}&category=vital-signs&_count=50`);
-            const vitCat = resourcesFromResponse(vitCatResp);
-            vitCat.forEach(o => addResource(o));
+            const vitCat = resourcesFromResponse(vitCatResp).map(formatObservationForReferral);
+            vitCat.forEach(o => o && addResource(o));
         }
 
         // Resolve collected references (practitioners, organizations, etc.)
@@ -152,7 +157,15 @@ async function buildReferralBundle(patientId, options = {}) {
         const refResults = await Promise.all(refPromises);
         refResults.forEach(fetched => {
             const arr = resourcesFromResponse(fetched);
-            arr.forEach(r => addResource(r));
+            arr.forEach(r => {
+                if (r.resourceType === 'Organization') {
+                    addResource(formatOrganizationForReferral(r));
+                } else if (r.resourceType === 'Practitioner') {
+                    addResource(formatPractitionerForReferral(r));
+                } else {
+                    addResource(r);
+                }
+            });
         });
 
         // Also attempt to resolve Coverage.payor organizations
@@ -166,7 +179,13 @@ async function buildReferralBundle(patientId, options = {}) {
         const payorResults = await Promise.all(payorRefs.map(r => fetchByReference(client, r).catch(() => null)));
         payorResults.forEach(fetched => {
             const arr = resourcesFromResponse(fetched);
-            arr.forEach(r => addResource(r));
+            arr.forEach(r => {
+                if (r.resourceType === 'Organization') {
+                    addResource(formatOrganizationForReferral(r));
+                } else {
+                    addResource(r);
+                }
+            });
         });
 
         // Assemble Bundle
@@ -221,6 +240,230 @@ async function buildReferralBundle(patientId, options = {}) {
         console.error('Error building referral bundle:', error);
         throw error;
     }
+}
+
+/**
+ * Formats an Observation resource for the referral bundle, extracting or standardizing fields.
+ * 
+ * @param {Object} rawObservation - The raw FHIR Observation resource
+ * @returns {Object} - The formatted FHIR Observation resource
+ */
+function formatObservationForReferral(rawObservation) {
+    if (!rawObservation) return null;
+
+    const observation = JSON.parse(JSON.stringify(rawObservation)); // deep copy
+
+    // 1. Enforce status
+    if (!observation.status) {
+        observation.status = 'final';
+    }
+
+    // 2. Enforce category
+    if (!observation.category || observation.category.length === 0) {
+        let isLaboratory = false;
+
+        if (observation.code && observation.code.coding && observation.code.coding.length > 0) {
+            const laboratoryCodes = ['2571-8', '2085-9', '2089-1', '2093-3'];
+            isLaboratory = observation.code.coding.some(c => 
+                c.system === 'http://loinc.org' && laboratoryCodes.includes(c.code)
+            );
+        }
+
+        observation.category = [{
+            coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+                code: isLaboratory ? 'laboratory' : 'vital-signs'
+            }]
+        }];
+    }
+
+    return observation;
+}
+
+/**
+ * Formats a Coverage resource for the referral bundle, extracting or standardizing fields.
+ * 
+ * @param {Object} rawCoverage - The raw FHIR Coverage resource
+ * @returns {Object} - The formatted FHIR Coverage resource
+ */
+function formatCoverageForReferral(rawCoverage) {
+    if (!rawCoverage) return null;
+
+    const coverage = JSON.parse(JSON.stringify(rawCoverage)); // deep copy
+
+    // 1. Enforce status
+    if (!coverage.status) {
+        coverage.status = 'active';
+    }
+
+    // 2. Enforce type
+    if (!coverage.type || !coverage.type.coding || coverage.type.coding.length === 0) {
+        coverage.type = {
+            coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+                code: 'UNK',
+                display: 'Unknown'
+            }]
+        };
+    } else {
+        // Find if they already have an ActCode
+        const hasActCode = coverage.type.coding.some(c => c.system === 'http://terminology.hl7.org/CodeSystem/v3-ActCode');
+        if (!hasActCode) {
+            coverage.type.coding.push({
+                system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+                code: 'UNK',
+                display: 'Unknown'
+            });
+        }
+    }
+
+    // subscriberId, beneficiary, Class and Payor are left as-is allowing for structural EHR passthrough
+    return coverage;
+}
+
+/**
+ * Formats a Practitioner resource for the referral bundle, extracting or standardizing fields.
+ * 
+ * @param {Object} rawPractitioner - The raw FHIR Practitioner resource
+ * @returns {Object} - The formatted FHIR Practitioner resource
+ */
+function formatPractitionerForReferral(rawPractitioner) {
+    if (!rawPractitioner) return null;
+
+    const practitioner = JSON.parse(JSON.stringify(rawPractitioner)); // deep copy
+
+    // 1. Enforce identifier (NPI)
+    if (!practitioner.identifier) {
+        practitioner.identifier = [];
+    }
+    const hasNpi = practitioner.identifier.some(id => id.system === 'http://hl7.org/fhir/sid/us-npi');
+    if (!hasNpi) {
+        practitioner.identifier.push({
+            system: 'http://hl7.org/fhir/sid/us-npi',
+            value: '0000000000'
+        });
+    }
+
+    // 2. Enforce name
+    if (!practitioner.name || practitioner.name.length === 0) {
+        practitioner.name = [{
+            family: 'Unknown',
+            given: ['Unknown']
+        }];
+    } else {
+        practitioner.name.forEach(n => {
+            if (!n.family) n.family = 'Unknown';
+            if (!n.given || n.given.length === 0) n.given = ['Unknown'];
+        });
+    }
+
+    // 3. Enforce qualifications
+    if (!practitioner.qualification || practitioner.qualification.length === 0) {
+        practitioner.qualification = [{
+            code: {
+                text: 'Unknown Credential'
+            }
+        }];
+    }
+
+    return practitioner;
+}
+
+/**
+ * Formats an Organization resource for the referral bundle, extracting or standardizing fields.
+ * 
+ * @param {Object} rawOrganization - The raw FHIR Organization resource
+ * @returns {Object} - The formatted FHIR Organization resource
+ */
+function formatOrganizationForReferral(rawOrganization) {
+    if (!rawOrganization) return null;
+
+    const organization = JSON.parse(JSON.stringify(rawOrganization)); // deep copy
+
+    // 1. Enforce identifier
+    if (!organization.identifier || organization.identifier.length === 0) {
+        organization.identifier = [{
+            value: 'unknown-org'
+        }];
+    }
+
+    // 2. Enforce active
+    if (organization.active === undefined) {
+        organization.active = true;
+    }
+
+    // 3. Enforce type
+    if (!organization.type || organization.type.length === 0) {
+        organization.type = [{
+            coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/organization-type',
+                code: 'prov',
+                display: 'Healthcare Provider'
+            }]
+        }];
+    }
+
+    // 4. Enforce name
+    if (!organization.name) {
+        organization.name = 'Unknown Organization';
+    }
+
+    // 5. Enforce telecom & address arrays to exist if missing
+    if (!organization.telecom) {
+        organization.telecom = [];
+    }
+    if (!organization.address) {
+        organization.address = [];
+    }
+
+    return organization;
+}
+
+/**
+ * Formats a Condition resource for the referral bundle, extracting or standardizing fields.
+ * 
+ * @param {Object} rawCondition - The raw FHIR Condition resource
+ * @returns {Object} - The formatted FHIR Condition resource
+ */
+function formatConditionForReferral(rawCondition) {
+    if (!rawCondition) return null;
+
+    const condition = JSON.parse(JSON.stringify(rawCondition)); // deep copy
+
+    // 1. Enforce clinicalStatus
+    if (!condition.clinicalStatus) {
+        condition.clinicalStatus = {
+            coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/condition-clinical',
+                code: 'active',
+                display: 'Active'
+            }]
+        };
+    }
+
+    // 2. Enforce verificationStatus
+    if (!condition.verificationStatus) {
+        condition.verificationStatus = {
+            coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/condition-ver-status',
+                code: 'confirmed',
+                display: 'Confirmed'
+            }]
+        };
+    }
+
+    // 3. Enforce category
+    if (!condition.category || condition.category.length === 0) {
+        condition.category = [{
+            coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/condition-category',
+                code: 'problem-list-item',
+                display: 'Problem List Item'
+            }]
+        }];
+    }
+
+    return condition;
 }
 
 async function resolvePractitionersFromBundle(client, everythingBundle) {

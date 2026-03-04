@@ -21,10 +21,11 @@ await jest.unstable_mockModule('../../src/fhir/client.js', () => ({
 
 const mockGetPatientName = jest.fn();
 
-// 1. Mock getPatientName before loading referral module
+// 1. Mock functions from patient.js before loading referral module
 await jest.unstable_mockModule('../../src/fhir/patient.js', () => ({
     __esModule: true,
-    getPatientName: mockGetPatientName
+    getPatientName: mockGetPatientName,
+    formatPatientForReferral: jest.fn((p) => p) // mock it to pass through
 }));
 
 // 2. Import module under test

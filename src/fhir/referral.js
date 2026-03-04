@@ -2,12 +2,13 @@
 // It includes logic for ensuring patient existence and handling referral submissions.
 
 const localFhirServer = 'http://localhost:8080/fhir'; // Local HAPI FHIR server
-import { getPatientName } from '../fhir/patient.js';
+import { getPatientName, formatPatientForReferral } from '../fhir/patient.js';
 import { getFhirClient } from '../fhir/client.js';
 import {
     buildConditionReasonReferences,
     fetchDiabetesConditions
 } from './conditions.js';
+import { buildReferralBundle } from './referralBundle.js';
 
 /**
  * Submit a referral to local HAPI FHIR server
@@ -43,12 +44,31 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
         const diabetesConditions = await fetchDiabetesConditions(fhirClient, patientData?.id);
         const reasonReferences = buildConditionReasonReferences(diabetesConditions);
 
-        console.log('Diabetes condition references for referral:', reasonReferences);
-        // Create FHIR ServiceRequest for YMCA referral
-        // const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences);
-        const bundle = createRequestBundle(localPatient, programType, priority, notes, reasonReferences);
+        // Fetch client_id from manifest
+        let clientId = 'unknown-client';
+        try {
+            const manifestRes = await fetch('/smart-app-manifest.json');
+            if (manifestRes.ok) {
+                const manifest = await manifestRes.json();
+                clientId = manifest.client_id;
+            }
+        } catch (e) {
+            console.warn('Could not fetch manifest for client_id', e);
+        }
 
-        console.log('Submitting Bundle:', bundle);
+        console.log('Diabetes condition references for referral:', reasonReferences);
+        
+        // 1. Create the ServiceRequest object locally to inject into the bundle
+        const localServiceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences, clientId, []);
+
+        // 2. Generate the comprehensive bundle using our centralized builder
+        // Passing the localServiceRequest so it doesn't try to fetch a random one from the EHR
+        const bundle = await buildReferralBundle(localPatient.id, {
+            bundleType: 'transaction', 
+            serviceRequest: localServiceRequest
+        });
+
+        console.log('Submitting Full Integrated Bundle:', JSON.stringify(bundle, null, 2));
 
         // Submit to local HAPI FHIR server
         const response = await fetch(`${localFhirServer}/Bundle`, {
@@ -107,24 +127,10 @@ async function ensurePatientInLocalFhir(fhirClient, patientData) {
  * Create a new patient in local HAPI FHIR
  */
 async function createPatientInLocalFhir(patientData) {
+    const formattedPatient = formatPatientForReferral(patientData);
+    
     const localPatient = {
-        resourceType: 'Patient',
-        identifier: [
-            {
-                system: 'http://smart-health-it.org/patient-id',
-                value: patientData.id
-            }
-        ],
-        name: patientData.name || [
-            {
-                family: 'Unknown',
-                given: ['Patient']
-            }
-        ],
-        gender: patientData.gender || 'unknown',
-        birthDate: patientData.birthDate || '1990-01-01',
-        address: patientData.address || [],
-        telecom: patientData.telecom || [],
+        ...formattedPatient,
         active: true,
         meta: {
             tag: [
@@ -157,7 +163,7 @@ async function createPatientInLocalFhir(patientData) {
 /**
  * Create a ServiceRequest object for the referral
  */
-function createServiceRequest(localPatient, programType, priority, notes, reasonReferences = []) {
+function createServiceRequest(localPatient, programType, priority, notes, reasonReferences = [], clientId = 'unknown', supportingInfo = []) {
     const normalizedReasonReferences = (Array.isArray(reasonReferences) ? reasonReferences : [])
         .map(ref => {
             const normalized = {
@@ -176,24 +182,18 @@ function createServiceRequest(localPatient, programType, priority, notes, reason
         })
         .filter(ref => ref.reference || ref.display || ref.identifier);
 
-    return {
+    const serviceRequest = {
         resourceType: 'ServiceRequest',
         status: 'active',
         intent: 'order',
         priority: priority,
-        category: [
-            {
-                coding: [
-                    {
-                        system: 'http://snomed.info/sct',
-                        code: '306206005',
-                        display: 'Referral to service'
-                    }
-                ]
-            }
-        ],
         code: {
             coding: [
+                {
+                    system: 'http://snomed.info/sct',
+                    code: '306206005',
+                    display: 'Referral to diabetes education program'
+                },
                 {
                     system: 'http://ymca.org/services',
                     code: programType,
@@ -208,10 +208,16 @@ function createServiceRequest(localPatient, programType, priority, notes, reason
         },
         authoredOn: new Date().toISOString(),
         requester: {
-            display: 'Healthcare Provider'
+            type: 'Organization',
+            display: 'YMCA Health Dashboard',
+            identifier: {
+                system: 'http://ymca.org/smart-app/client-id',
+                value: clientId
+            }
         },
         performer: [
             {
+                reference: 'Organization/ymca-diabetes-program',
                 display: 'YMCA Health Programs',
                 extension: [
                     {
@@ -223,7 +229,14 @@ function createServiceRequest(localPatient, programType, priority, notes, reason
         ],
         reasonCode: [
             {
-                text: notes || `Patient referral for ${programType} program based on health assessment`
+                text: notes || `Patient referral for ${programType} program based on health assessment`,
+                coding: [
+                    {
+                        system: 'http://snomed.info/sct',
+                        code: '44054006',
+                        display: 'Type 2 diabetes mellitus'
+                    }
+                ]
             }
         ],
         reasonReference: normalizedReasonReferences,
@@ -234,6 +247,12 @@ function createServiceRequest(localPatient, programType, priority, notes, reason
             }
         ] : []
     };
+
+    if (supportingInfo && supportingInfo.length > 0) {
+        serviceRequest.supportingInfo = supportingInfo;
+    }
+
+    return serviceRequest;
 }
 
 async function fetchPatientFromSmartClient(fhirClient) {
@@ -248,8 +267,10 @@ async function fetchPatientFromSmartClient(fhirClient) {
     }
 }
 
-function createRequestBundle(localPatient, programType, priority, notes, reasonReferences = []) {
-    const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences);
+function createRequestBundle(localPatient, programType, priority, notes, reasonReferences = [], clientId = 'unknown', supportingInfo = []) {
+    const serviceRequest = createServiceRequest(localPatient, programType, priority, notes, reasonReferences, clientId, supportingInfo);
+
+    console.log('Created ServiceRequest for Bundle:', serviceRequest);
 
     return {
         resourceType: 'Bundle',
