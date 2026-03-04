@@ -64,7 +64,7 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
         // 2. Generate the comprehensive bundle using our centralized builder
         // Passing the localServiceRequest so it doesn't try to fetch a random one from the EHR
         const bundle = await buildReferralBundle(patientData.id, {
-            bundleType: 'transaction', 
+            bundleType: 'collection', 
             serviceRequest: localServiceRequest,
             patient: localPatient
         });
@@ -104,7 +104,7 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
 
         console.log('Bundle validated successfully. Proceeding with submission...');
 
-        // 4. Submit to local HAPI FHIR server
+        // 4. Submit to local HAPI FHIR server as a persisted collection Bundle
         const response = await fetch(`${localFhirServer}/Bundle`, {
             method: 'POST',
             headers: {

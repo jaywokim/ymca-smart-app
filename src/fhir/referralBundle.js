@@ -7,8 +7,11 @@ import { getFhirClient } from './client.js';
  */
 function resourcesFromResponse(resp) {
     if (!resp) return [];
-    if (resp.resourceType === 'Bundle' && Array.isArray(resp.entry)) {
-        return resp.entry.map(e => e.resource).filter(Boolean);
+    if (resp.resourceType === 'Bundle') {
+        if (Array.isArray(resp.entry)) {
+            return resp.entry.map(e => e.resource).filter(Boolean);
+        }
+        return [];
     }
     if (resp.resourceType) {
         return [resp];
@@ -206,10 +209,12 @@ async function buildReferralBundle(patientId, options = {}) {
             'Observation'
         ];
 
+        const baseUrl = client && client.state && client.state.serverUrl ? client.state.serverUrl.replace(/\/$/, '') : '';
+
         orderedTypes.forEach(t => {
             const arr = byType.get(t) || [];
             arr.forEach(res => {
-                const fullUrl = `${res.resourceType}/${res.id}`;
+                const fullUrl = baseUrl ? `${baseUrl}/${res.resourceType}/${res.id}` : `${res.resourceType}/${res.id}`;
                 const entry = { fullUrl, resource: res };
                 if (bundleType === 'transaction') entry.request = { method: 'PUT', url: `${res.resourceType}/${res.id}` };
                 bundle.entry.push(entry);
@@ -220,7 +225,7 @@ async function buildReferralBundle(patientId, options = {}) {
         for (const [type, arr] of byType.entries()) {
             if (orderedTypes.includes(type)) continue;
             arr.forEach(res => {
-                const fullUrl = `${res.resourceType}/${res.id}`;
+                const fullUrl = baseUrl ? `${baseUrl}/${res.resourceType}/${res.id}` : `${res.resourceType}/${res.id}`;
                 const entry = { fullUrl, resource: res };
                 if (bundleType === 'transaction') entry.request = { method: 'PUT', url: `${res.resourceType}/${res.id}` };
                 bundle.entry.push(entry);
@@ -259,10 +264,10 @@ function formatObservationForReferral(rawObservation) {
     }
 
     // 2. Enforce category
-    if (!observation.category || observation.category.length === 0) {
+    if (!observation.category || !Array.isArray(observation.category) || observation.category.length === 0) {
         let isLaboratory = false;
 
-        if (observation.code && observation.code.coding && observation.code.coding.length > 0) {
+        if (observation.code && observation.code.coding && Array.isArray(observation.code.coding) && observation.code.coding.length > 0) {
             const laboratoryCodes = ['2571-8', '2085-9', '2089-1', '2093-3'];
             isLaboratory = observation.code.coding.some(c => 
                 c.system === 'http://loinc.org' && laboratoryCodes.includes(c.code)
@@ -275,6 +280,13 @@ function formatObservationForReferral(rawObservation) {
                 code: isLaboratory ? 'laboratory' : 'vital-signs'
             }]
         }];
+    }
+
+    // 3. Enforce performer
+    if (!observation.performer || !Array.isArray(observation.performer) || observation.performer.length === 0) {
+        if (observation.subject) {
+            observation.performer = [observation.subject];
+        }
     }
 
     return observation;
