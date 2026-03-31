@@ -81,8 +81,8 @@ describe('buildReferralBundle', () => {
     expect(bundle).toBeDefined();
     expect(bundle.resourceType).toBe('Bundle');
     const types = bundle.entry.map(e => e.resource.resourceType).sort();
-    expect(types).toEqual(expect.arrayContaining(['ServiceRequest', 'Patient', 'Practitioner', 'Organization', 'Observation']));
-    // Expect 5 unique entries
-    expect(bundle.entry.length).toBe(5);
+    expect(types).toEqual(expect.arrayContaining(['ServiceRequest', 'Patient', 'Practitioner', 'Organization', 'Coverage', 'Observation']));
+    // Expect 7 unique entries since we are generating automatic Organization and Coverage fallbacks
+    expect(bundle.entry.length).toBe(7);
   });
 });

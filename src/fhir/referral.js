@@ -216,8 +216,11 @@ function createServiceRequest(localPatient, programType, priority, notes, reason
         })
         .filter(ref => ref.reference || ref.display || ref.identifier);
 
+    const serviceRequestId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sr-' + Date.now() + Math.floor(Math.random()*1000);
+
     const serviceRequest = {
         resourceType: 'ServiceRequest',
+        id: serviceRequestId,
         status: 'active',
         intent: 'order',
         priority: priority,
@@ -306,12 +309,14 @@ function createRequestBundle(localPatient, programType, priority, notes, reasonR
 
     console.log('Created ServiceRequest for Bundle:', serviceRequest);
 
+    const bundleId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'bundle-' + Date.now();
+
     return {
         resourceType: 'Bundle',
         type: 'collection',
         entry: [
             {
-                fullUrl: `urn:uuid:${crypto.randomUUID()}`,
+                fullUrl: `urn:uuid:${bundleId}`,
                 resource: serviceRequest
             }
         ]
