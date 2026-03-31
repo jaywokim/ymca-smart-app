@@ -1,7 +1,7 @@
 // This file contains functions for creating and submitting referrals to the FHIR server.
 // It includes logic for ensuring patient existence and handling referral submissions.
 
-const localFhirServer = 'http://localhost:8080/fhir'; // Local HAPI FHIR server
+import { LOCAL_FHIR_SERVER as localFhirServer } from '../config/appConfig.js';
 import { getPatientName, formatPatientForReferral } from '../fhir/patient.js';
 import { getFhirClient } from '../fhir/client.js';
 import {

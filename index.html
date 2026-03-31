@@ -65,7 +65,7 @@
                 </div>
 
                 <!-- YMCA Referral Card -->
-                <div class="card">
+                <div class="card" id="referral-card">
                     <div class="card-header">
                         <span class="card-icon">🏊‍♀️</span>
                         <h2 class="card-title">YMCA Program Referral</h2>
@@ -137,8 +137,20 @@
                         </button>
                     </div>
                 </div>
-            </div>
             
+                <!-- Task Status & Comments Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📋</span>
+                        <h2 class="card-title">Task Status &amp; Comments</h2>
+                        <button id="refresh-task-btn" class="btn btn-sm" style="margin-left: auto;">&#x21bb; Refresh</button>
+                    </div>
+                    <div id="task-content">
+                        <!-- Task status and comments will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
             <div id="error" style="display: none;" class="error">
                 <div class="error-icon">⚠️</div>
                 <h2>Unable to load patient data</h2>

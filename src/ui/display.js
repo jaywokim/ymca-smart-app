@@ -145,11 +145,132 @@ function updateUserName(patient) {
     userName.textContent = name;
 }
 
+/**
+ * Map a FHIR Task.status value to a display label and CSS modifier class.
+ */
+const TASK_STATUS_MAP = {
+    requested:       { label: 'Requested',        cls: 'status-requested' },
+    received:        { label: 'Received',          cls: 'status-requested' },
+    accepted:        { label: 'Accepted',          cls: 'status-in-progress' },
+    rejected:        { label: 'Rejected',          cls: 'status-cancelled' },
+    ready:           { label: 'Ready',             cls: 'status-in-progress' },
+    cancelled:       { label: 'Cancelled',         cls: 'status-cancelled' },
+    'in-progress':   { label: 'In Progress',       cls: 'status-in-progress' },
+    'on-hold':       { label: 'On Hold',           cls: 'status-cancelled' },
+    failed:          { label: 'Failed',            cls: 'status-failed' },
+    completed:       { label: 'Completed',         cls: 'status-completed' },
+    'entered-in-error': { label: 'Entered in Error', cls: 'status-failed' },
+};
+
+/**
+ * Render the content for a single Communication resource as a comment item.
+ */
+function renderCommentItem(communication) {
+    const text = communication.payload?.[0]?.contentString
+        ?? communication.note?.[0]?.text
+        ?? '(no content)';
+    const rawDate = communication.sent ?? communication.meta?.lastUpdated;
+    const sent = rawDate ? formatDate(rawDate) : 'Unknown date';
+    const author = communication.sender?.display ?? communication.sender?.reference ?? 'System';
+
+    return `
+        <div class="comment-item">
+            <div class="comment-header">
+                <span class="comment-author">${author}</span>
+                <span class="comment-date">${sent}</span>
+            </div>
+            <div class="comment-text">${text}</div>
+        </div>
+    `;
+}
+
+/**
+ * Populate #task-content with the Task status and a log of Communication comments.
+ * @param {{ task: object, communications: object[] }} data
+ */
+function displayTaskSection({ task, communications }) {
+    const container = document.getElementById('task-content');
+
+    const rawStatus = task.status ?? 'unknown';
+    const statusInfo = TASK_STATUS_MAP[rawStatus] ?? { label: rawStatus, cls: 'status-requested' };
+
+    const taskDescription = task.description
+        ?? task.code?.text
+        ?? task.code?.coding?.[0]?.display
+        ?? 'YMCA Referral Task';
+
+    const authoredOn = task.authoredOn ? formatDate(task.authoredOn) : null;
+    const lastModified = task.lastModified ? formatDate(task.lastModified) : null;
+
+    let metaHtml = '';
+    if (authoredOn) {
+        metaHtml += `<div class="task-meta-item"><span class="info-label">Created</span><span class="info-value">${authoredOn}</span></div>`;
+    }
+    if (lastModified) {
+        metaHtml += `<div class="task-meta-item"><span class="info-label">Last Updated</span><span class="info-value">${lastModified}</span></div>`;
+    }
+
+    let commentsHtml = '';
+    if (!communications || communications.length === 0) {
+        commentsHtml = `
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <p>No comments yet</p>
+            </div>
+        `;
+    } else {
+        commentsHtml = `<div class="comment-list">${communications.map(renderCommentItem).join('')}</div>`;
+    }
+
+    container.innerHTML = `
+        <div class="task-status-row">
+            <div class="task-status">
+                <span class="status-badge ${statusInfo.cls}">${statusInfo.label}</span>
+                <span class="task-description">${taskDescription}</span>
+            </div>
+        </div>
+        ${metaHtml ? `<div class="task-meta">${metaHtml}</div>` : ''}
+        <div class="task-comments-section">
+            <h3 class="comments-heading">Comments Log</h3>
+            ${commentsHtml}
+        </div>
+    `;
+}
+
+/**
+ * Show an empty state in #task-content when no Task is found for this patient.
+ */
+function displayEmptyTaskSection() {
+    const container = document.getElementById('task-content');
+    container.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No referral task found for this patient</p>
+        </div>
+    `;
+}
+
+/**
+ * Show a loading state in #task-content while fetching.
+ */
+function displayTaskLoading() {
+    const container = document.getElementById('task-content');
+    container.innerHTML = `
+        <div class="task-loading">
+            <div class="spinner spinner-sm"></div>
+            <span>Checking for tasks...</span>
+        </div>
+    `;
+}
+
 export {
     displayPatientInfo,
     displayVitalSigns,
     displayObservations,
     displayEmptyVitals,
     displayEmptyObservations,
-    updateUserName
+    updateUserName,
+    displayTaskSection,
+    displayEmptyTaskSection,
+    displayTaskLoading
 };

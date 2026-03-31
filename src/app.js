@@ -2,8 +2,33 @@
 
 import { initializeFhirClient, getFhirClient } from './fhir/client.js';
 import { loadPatientData } from './fhir/patient.js';
+import { loadTaskData } from './fhir/task.js';
 import { showError } from './ui/error.js';
 import { handleReferralSubmission } from './ui/form.js';
+import { displayTaskSection, displayEmptyTaskSection, displayTaskLoading } from './ui/display.js';
+
+// Holds the current patient resource so the refresh button can reload task data.
+let currentPatient = null;
+
+/**
+ * Fetch Task + Communication data and update #task-content.
+ * Non-blocking: failures show a toast but do not disrupt the rest of the UI.
+ */
+async function loadAndDisplayTask(patient) {
+    displayTaskLoading();
+    try {
+        const result = await loadTaskData(patient);
+        if (result) {
+            displayTaskSection(result);
+        } else {
+            displayEmptyTaskSection();
+        }
+    } catch (error) {
+        console.error('Task section error:', error);
+        displayEmptyTaskSection();
+        showError('Could not load task data: ' + error.message);
+    }
+}
 
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', async function() {
@@ -12,11 +37,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log('FHIR Client initialized:', fhirClientInit);
         await logFhirUserContext(fhirClientInit);
         
-        await loadPatientData();
+        currentPatient = await loadPatientData();
 
-        // Hide loading and show content
+        // Hide loading and show content before kicking off the task fetch
         document.getElementById('loading').style.display = 'none';
         document.getElementById('content').style.display = 'block';
+
+        // Load task section in parallel (non-blocking)
+        loadAndDisplayTask(currentPatient);
+
+        // Wire up the refresh button
+        document.getElementById('refresh-task-btn')?.addEventListener('click', () => {
+            if (currentPatient) loadAndDisplayTask(currentPatient);
+        });
 
     } catch (error) {
         console.error('Error initializing app:', error);
