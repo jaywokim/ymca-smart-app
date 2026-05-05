@@ -220,18 +220,25 @@ async function loadPatientData() {
         displayPatientInfo(patient);
         updateUserName(patient);
         
-        // Load additional data
-        await Promise.all([
+        // Load additional data — use allSettled so a single failure doesn't crash the whole page
+        const [vitalsResult, observationsResult, referralResult] = await Promise.allSettled([
             loadVitalSigns(patient.id),
             loadObservations(patient.id),
             buildReferralBundle(patient.id)
         ]);
 
+        if (vitalsResult.status === 'rejected')
+            console.warn('loadVitalSigns failed:', vitalsResult.reason?.message ?? vitalsResult.reason);
+        if (observationsResult.status === 'rejected')
+            console.warn('loadObservations failed:', observationsResult.reason?.message ?? observationsResult.reason);
+        if (referralResult.status === 'rejected')
+            console.warn('buildReferralBundle failed:', referralResult.reason?.message ?? referralResult.reason);
+
         return patient;
 
     } catch (error) {
         console.error('Error loading patient data:', error);
-        throw new Error('Unable to load patient information');
+        throw new Error(`Unable to load patient information: ${error.message ?? error}`);
     }
 }
 

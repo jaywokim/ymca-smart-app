@@ -23,8 +23,14 @@
                     throw new Error('Could not load SMART app manifest');
                 }
                 const manifest = await response.json();
-                const clientId = manifest.client_id ?? 'ymca-smart-app';
-                const scope = manifest.scope ?? 'launch patient/*.read';
+                const iss = new URLSearchParams(location.search).get("iss") ?? '';
+                const clientIds = manifest.client_ids ?? {};
+                const issHostname = iss ? new URL(iss).hostname : '';
+                const clientId = clientIds[issHostname];
+                if (!clientId) {
+                    throw new Error(`Unrecognized FHIR server: "${issHostname || iss || 'unknown'}". This vendor is not registered with the YMCA app.`);
+                }
+                const scope = manifest.scope ?? 'launch openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read';
                 const redirectUri = Array.isArray(manifest.redirect_uris) && manifest.redirect_uris.length
                     ? manifest.redirect_uris[0]
                     : window.location.origin + '/index.html';
@@ -33,7 +39,7 @@
                     clientId,
                     scope,
                     redirectUri,
-                    iss: new URLSearchParams(location.search).get("iss"),
+                    iss: iss || undefined,
                     launch: new URLSearchParams(location.search).get("launch")
                 });
             } catch (error) {

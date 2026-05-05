@@ -203,3 +203,72 @@ All tests live under __tests__ (for referral, error, display, form, helpers) and
 ---
 
 **Note**: Replace placeholder URLs in `smart-app-manifest.json` with your actual deployment URLs before production use.
+
+## Testing Strategies
+
+### Option 1: SMART Health IT Sandbox (Quickest Start)
+
+No additional infrastructure needed. Validates the full OAuth2/SMART launch flow with synthetic patients.
+
+1. Run your local dev server: `npm run dev`
+2. Go to [https://launch.smarthealthit.org](https://launch.smarthealthit.org)
+3. Set **App Launch URL**: `http://localhost:3000/launch.html`
+4. Set **App Redirect URL**: `http://localhost:3000/index.html`
+5. Select FHIR R4, pick a patient, and launch.
+
+✅ Proves: SMART launch, OAuth2 token exchange, Patient/Observation reads.
+
+---
+
+### Option 2: Epic on FHIR Sandbox (Best for Epic EHR Integration)
+
+This is the most realistic test if your target environment is an Epic EHR.
+
+1. **Register** a free developer account at [https://fhir.epic.com/developer](https://fhir.epic.com/developer)
+2. **Create a new app**:
+   - Application Audience: `Patient-facing`
+   - Redirect URI: `http://localhost:3000/index.html`
+   - Required scopes: `launch`, `patient/*.read`, `openid`, `fhirUser`
+3. **Get your Client ID** from the app dashboard
+4. **Update `launch.html`** with Epic's FHIR endpoint:
+   ```javascript
+   FHIR.oauth2.authorize({
+     client_id: "YOUR_EPIC_CLIENT_ID",
+     iss: "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4",
+     scope: "launch patient/*.read openid fhirUser",
+     redirect_uri: "http://localhost:3000/index.html"
+   });
+   ```
+5. Use Epic's test patient credentials from the [Epic sandbox patient roster](https://fhir.epic.com/Documentation?docId=testpatients)
+
+✅ Proves: Real Epic OAuth2 flow, Epic FHIR R4 resource shapes, production-like auth behavior.  
+⚠️ Note: Epic sandbox is **read-only** — referral writes must be tested against local HAPI FHIR.
+
+---
+
+### Option 3: Local Docker HAPI FHIR (Referral Write Testing)
+
+Use this to validate the ServiceRequest referral submission feature.
+
+1. **Start HAPI FHIR:**
+   ```bash
+   docker run -p 8080:8080 hapiproject/hapi:latest
+   ```
+2. Launch the app via SMART Health IT (Option 1)
+3. Submit a referral — the app will POST to `http://localhost:8080/fhir/`
+4. Verify at `http://localhost:8080/` → search ServiceRequest and Patient resources
+
+✅ Proves: Referral write workflow, patient auto-creation, local FHIR server integration.
+
+---
+
+### Recommended Test Sequence
+
+| Step | Method | Validates |
+|---|---|---|
+| 1 | SMART Health IT Sandbox | OAuth2 flow, data display |
+| 2 | Local Docker HAPI FHIR | Referral submission writes |
+| 3 | Epic on FHIR Sandbox | Epic-specific auth & resource formats |
+| 4 | Epic Sandbox + HAPI FHIR | Full end-to-end simulation |
+
+---

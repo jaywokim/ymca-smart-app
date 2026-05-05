@@ -17,14 +17,21 @@ async function loadVitalSigns(patientId) {
     try {
         const fhirClient = getFhirClient();
         const observations = await fhirClient.request(`Observation?patient=${patientId}&category=vital-signs&_sort=-date&_count=10`);
+        console.log('[loadVitalSigns] Epic response - total:', observations.total, 'entries:', observations.entry?.length ?? 0, 'bundle type:', observations.type);
 
         if (observations.entry && observations.entry.length > 0) {
             displayVitalSigns(observations.entry);
         } else {
+            console.warn('[loadVitalSigns] Empty bundle from Epic — no vital signs entries returned.');
             displayEmptyVitals();
         }
     } catch (error) {
-        console.error('Error loading vital signs:', error);
+        if (error?.status === 403 || error?.response?.status === 403) {
+            console.warn('[loadVitalSigns] 403 from Epic — scope granted but access denied for this patient/context.');
+            displayEmptyVitals();
+            return;
+        }
+        console.error('[loadVitalSigns] Unexpected error:', error?.status, error?.message);
         throw new Error('Unable to load vital signs');
     }
 }
@@ -38,14 +45,21 @@ async function loadObservations(patientId) {
     try {
         const fhirClient = getFhirClient();
         const observations = await fhirClient.request(`Observation?patient=${patientId}&_sort=-date&_count=20`);
+        console.log('[loadObservations] Epic response - total:', observations.total, 'entries:', observations.entry?.length ?? 0, 'bundle type:', observations.type);
 
         if (observations.entry && observations.entry.length > 0) {
             displayObservations(observations.entry);
         } else {
+            console.warn('[loadObservations] Empty bundle from Epic — no observation entries returned.');
             displayEmptyObservations();
         }
     } catch (error) {
-        console.error('Error loading observations:', error);
+        if (error?.status === 403 || error?.response?.status === 403) {
+            console.warn('[loadObservations] 403 from Epic — scope granted but access denied for this patient/context.');
+            displayEmptyObservations();
+            return;
+        }
+        console.error('[loadObservations] Unexpected error:', error?.status, error?.message);
         throw new Error('Unable to load observations');
     }
 }

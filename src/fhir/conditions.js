@@ -24,6 +24,10 @@ export async function fetchDiabetesConditions(fhirClient, patientId) {
         const resources = normalizeFhirResponse(response);
         return resources.filter(isDiabetesCondition);
     } catch (error) {
+        if (error?.status === 403 || error?.response?.status === 403) {
+            console.warn('Condition scope not granted (403) — skipping diabetes conditions.');
+            return [];
+        }
         console.error('Unable to fetch diabetes conditions:', error);
         return [];
     }

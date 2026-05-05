@@ -91,8 +91,16 @@ async function buildReferralBundle(patientId, options = {}) {
         } else {
             // Grab first referral ServiceRequest for patient
             // TODO, this should be changed before Prod I just want to continue for now
-            const resp = await client.request(`ServiceRequest?patient=${patientId}&_count=50`);
-            serviceRequests = resourcesFromResponse(resp);
+            try {
+                const resp = await client.request(`ServiceRequest?patient=${patientId}&_count=50`);
+                serviceRequests = resourcesFromResponse(resp);
+            } catch (srError) {
+                if (srError?.status === 403 || srError?.response?.status === 403) {
+                    console.warn('ServiceRequest scope not granted or no referrals accessible (403) — continuing bundle build without ServiceRequests.');
+                } else {
+                    throw srError;
+                }
+            }
         }
         serviceRequests.forEach(r => addResource(r));
 

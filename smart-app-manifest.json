@@ -1,7 +1,11 @@
 {
   "software_id": "ymca-smart-app",
   "client_name": "YMCA Health Dashboard",
+  "debug": true,
   "client_id": "51b6933a-7191-4521-ba51-71e779f01cc5",
+  "client_ids": {
+    "fhir.epic.com": "51b6933a-7191-4521-ba51-71e779f01cc5"
+  },
   "client_uri": "http://localhost:3000",
   "logo_uri": "http://localhost:3000/logo.png",
   "tos_uri": "http://localhost:3000/terms",
@@ -16,7 +20,7 @@
   "response_types": [
     "code"
   ],
-  "scope": "launch patient/*.read openid fhirUser",
+  "scope": "launch openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read",
   "fhir_versions": [
     "4.0.1"
   ],
