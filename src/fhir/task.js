@@ -1,7 +1,7 @@
 // src/fhir/task.js
-// Fetches Task and Communication resources from the local FHIR server for a given patient.
+// Fetches Task and Communication resources from the referral FHIR server for a given patient.
 
-import { LOCAL_FHIR_SERVER } from '../config/appConfig.js';
+import { REFERRAL_FHIR_SERVER } from '../config/appConfig.js';
 import { getPatientName } from '../fhir/patient.js';
 
 /**
@@ -42,7 +42,7 @@ async function searchLocalPatient(url, label) {
  * @param {string} [server]
  * @returns {Promise<string|null>}
  */
-export async function findLocalPatientId(patientResource, server = LOCAL_FHIR_SERVER) {
+export async function findLocalPatientId(patientResource, server = REFERRAL_FHIR_SERVER) {
     const ehrId = patientResource?.id;
     const name  = getPatientName(patientResource);
 
@@ -127,7 +127,7 @@ async function findServiceRequestIds(localPatientId, server) {
  * @param {string} [server]
  * @returns {Promise<object|null>} FHIR Task resource or null
  */
-export async function findTaskForPatient(localPatientId, server = LOCAL_FHIR_SERVER) {
+export async function findTaskForPatient(localPatientId, server = REFERRAL_FHIR_SERVER) {
     try {
         // Strategy 1: Task?patient= (maps to Task.for when subject is a Patient)
         console.log(`[Task S1] Searching Task?patient=${localPatientId}`);
@@ -232,7 +232,7 @@ export async function findTaskForPatient(localPatientId, server = LOCAL_FHIR_SER
  * @param {string} [server]
  * @returns {Promise<object[]>} Array of FHIR Communication resources (may be empty)
  */
-export async function fetchCommunicationsForTask(taskId, server = LOCAL_FHIR_SERVER) {
+export async function fetchCommunicationsForTask(taskId, server = REFERRAL_FHIR_SERVER) {
     try {
         const response = await fetch(`${server}/Communication?part-of=Task/${taskId}&_sort=sent`);
         if (!response.ok) {
@@ -255,7 +255,7 @@ export async function fetchCommunicationsForTask(taskId, server = LOCAL_FHIR_SER
  * @returns {Promise<{task: object, communications: object[]}|null>}
  *   Returns null if no Task is found; throws on unexpected errors.
  */
-export async function loadTaskData(patientResource, server = LOCAL_FHIR_SERVER) {
+export async function loadTaskData(patientResource, server = REFERRAL_FHIR_SERVER) {
     try {
         const localPatientId = await findLocalPatientId(patientResource, server);
         if (!localPatientId) {

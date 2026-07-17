@@ -1,7 +1,7 @@
 // This file contains functions for creating and submitting referrals to the FHIR server.
 // It includes logic for ensuring patient existence and handling referral submissions.
 
-import { LOCAL_FHIR_SERVER as localFhirServer } from '../config/appConfig.js';
+import { REFERRAL_FHIR_SERVER as referralFhirServer } from '../config/appConfig.js';
 import { getPatientName, formatPatientForReferral } from '../fhir/patient.js';
 import { getFhirClient } from '../fhir/client.js';
 import {
@@ -72,40 +72,41 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
         console.log('Submitting Full Integrated Bundle:', JSON.stringify(bundle, null, 2));
 
         // 3. Validate the Bundle against the FHIR Server's $validate endpoint
-        console.log('Validating bundle before submission...');
-        const validateResponse = await fetch(`${localFhirServer}/Bundle/$validate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/fhir+json',
-                'Accept': 'application/fhir+json'
-            },
-            body: JSON.stringify(bundle)
-        });
+        // TODO: Re-enable validation once HAPI server supports $validate for collection bundles
+        // console.log('Validating bundle before submission...');
+        // const validateResponse = await fetch(`${referralFhirServer}/Bundle/$validate`, {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/fhir+json',
+        //         'Accept': 'application/fhir+json'
+        //     },
+        //     body: JSON.stringify(bundle)
+        // });
 
-        // Parse the OperationOutcome
-        let operationOutcome;
-        try {
-            operationOutcome = await validateResponse.json();
-        } catch (e) {
-            const errorText = await validateResponse.text();
-            throw new Error(`FHIR validation endpoint failed to return JSON: ${validateResponse.status} - ${errorText}`);
-        }
+        // // Parse the OperationOutcome
+        // let operationOutcome;
+        // try {
+        //     operationOutcome = await validateResponse.json();
+        // } catch (e) {
+        //     const errorText = await validateResponse.text();
+        //     throw new Error(`FHIR validation endpoint failed to return JSON: ${validateResponse.status} - ${errorText}`);
+        // }
 
-        // Check if the server returned validation errors
-        if (operationOutcome.resourceType === 'OperationOutcome') {
-            const hasErrors = operationOutcome.issue && operationOutcome.issue.some(issue => issue.severity === 'error' || issue.severity === 'fatal');
-            if (hasErrors) {
-                console.error('Bundle validation failed:', JSON.stringify(operationOutcome.issue, null, 2));
-                throw new Error('Bundle failed FHIR validation. Check console for OperationOutcome details.');
-            }
-        } else if (!validateResponse.ok) {
-            throw new Error(`FHIR validation HTTP error: ${validateResponse.status}`);
-        }
+        // // Check if the server returned validation errors
+        // if (operationOutcome.resourceType === 'OperationOutcome') {
+        //     const hasErrors = operationOutcome.issue && operationOutcome.issue.some(issue => issue.severity === 'error' || issue.severity === 'fatal');
+        //     if (hasErrors) {
+        //         console.error('Bundle validation failed:', JSON.stringify(operationOutcome.issue, null, 2));
+        //         throw new Error('Bundle failed FHIR validation. Check console for OperationOutcome details.');
+        //     }
+        // } else if (!validateResponse.ok) {
+        //     throw new Error(`FHIR validation HTTP error: ${validateResponse.status}`);
+        // }
 
-        console.log('Bundle validated successfully. Proceeding with submission...');
+        // console.log('Bundle validated successfully. Proceeding with submission...');
 
         // 4. Submit to local HAPI FHIR server as a persisted collection Bundle
-        const response = await fetch(`${localFhirServer}/Bundle`, {
+        const response = await fetch(`${referralFhirServer}/Bundle`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/fhir+json',
@@ -134,7 +135,7 @@ async function submitYmcaReferral(patientData, programType, priority = 'routine'
 async function ensurePatientInLocalFhir(fhirClient, patientData) {
     try {
         const searchName = getPatientName(patientData).replace(' ', '%20');
-        const searchResponse = await fetch(`${localFhirServer}/Patient?name=${searchName}`, {
+        const searchResponse = await fetch(`${referralFhirServer}/Patient?name=${searchName}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/fhir+json'
@@ -177,7 +178,7 @@ async function createPatientInLocalFhir(patientData) {
         }
     };
 
-    const createResponse = await fetch(`${localFhirServer}/Patient`, {
+    const createResponse = await fetch(`${referralFhirServer}/Patient`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/fhir+json',

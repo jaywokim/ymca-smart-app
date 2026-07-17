@@ -1,5 +1,13 @@
 import { jest } from '@jest/globals';
 
+// Mock appConfig so tests don't depend on the deployment placeholder value
+// in src/config/appConfig.js (REFERRAL_FHIR_SERVER).
+await jest.unstable_mockModule('../../src/config/appConfig.js', () => ({
+  __esModule: true,
+  VITAL_TYPES_URL: '/src/config/vitalTypes.json',
+  REFERRAL_FHIR_SERVER: 'http://localhost:8080/fhir',
+}));
+
 // --- new: mock FHIR client before loading referral module ---
 const mockRequest = jest.fn((url, opts) =>
   global.fetch(url, opts).then(async resp => {

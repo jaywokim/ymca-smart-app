@@ -4,7 +4,7 @@ import { jest } from '@jest/globals';
 await jest.unstable_mockModule('../../src/config/appConfig.js', () => ({
     __esModule: true,
     VITAL_TYPES_URL: '/src/config/vitalTypes.json',
-    LOCAL_FHIR_SERVER: 'http://test-fhir:8080/fhir',
+    REFERRAL_FHIR_SERVER: 'http://test-fhir:8080/fhir',
 }));
 
 // Mock patient.js getPatientName

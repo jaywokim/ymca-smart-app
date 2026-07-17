@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "trailingSlash": "auto",
+  "mimeTypes": {
+    ".json": "application/json",
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2"
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/src/*",
+      "/*.json",
+      "/*.js",
+      "/*.css",
+      "/*.png",
+      "/*.jpg",
+      "/*.svg",
+      "/*.woff2"
+    ]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff"
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
+  }
+}

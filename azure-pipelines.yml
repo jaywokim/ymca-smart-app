@@ -1,0 +1,62 @@
+# Azure DevOps pipeline: deploy YMCA SMART App to Azure Static Web Apps
+#
+# Prerequisites:
+#   1. An Azure Static Web Apps resource already provisioned (see AZURE_DEPLOYMENT.md).
+#   2. A secret pipeline variable named `AZURE_STATIC_WEB_APPS_API_TOKEN`
+#      containing the SWA deployment token. Mark it as "secret" in the ADO
+#      pipeline UI (Pipeline > Edit > Variables) or store it in a variable group.
+#
+# This app has NO build step: it is served as static files exactly as they sit
+# in the repo, so `skip_app_build` is set to true and node_modules is never
+# published to the CDN.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Test
+    displayName: Run unit tests
+    jobs:
+      - job: jest
+        displayName: Jest test suite
+        steps:
+          - task: NodeTool@0
+            displayName: Use Node.js 20.x
+            inputs:
+              versionSpec: 20.x
+
+          - script: npm ci
+            displayName: Install dev dependencies
+
+          - script: npm test
+            displayName: Run Jest tests
+
+  - stage: Deploy
+    displayName: Deploy to Azure Static Web Apps
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - job: deploy
+        displayName: Publish static files
+        steps:
+          # Clean checkout so no build artifacts / node_modules are uploaded.
+          - checkout: self
+            clean: true
+
+          - task: AzureStaticWebApp@0
+            displayName: Deploy to SWA
+            inputs:
+              # Root of the repo is the app content root.
+              app_location: "/"
+              # No serverless API in this project.
+              api_location: ""
+              # No build output folder; files are served as-is.
+              output_location: ""
+              # Nothing to build — deploy the static files directly.
+              skip_app_build: true
+              azure_static_web_apps_api_token: $(AZURE_STATIC_WEB_APPS_API_TOKEN)

@@ -4,7 +4,8 @@
   "debug": true,
   "client_id": "51b6933a-7191-4521-ba51-71e779f01cc5",
   "client_ids": {
-    "fhir.epic.com": "51b6933a-7191-4521-ba51-71e779f01cc5"
+    "fhir.epic.com": "51b6933a-7191-4521-ba51-71e779f01cc5",
+    "launch.smarthealthit.org": "ymca-smart-app"
   },
   "client_uri": "http://localhost:3000",
   "logo_uri": "http://localhost:3000/logo.png",
@@ -21,6 +22,7 @@
     "code"
   ],
   "scope": "launch openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read",
+  "standalone_scope": "launch/patient openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read",
   "fhir_versions": [
     "4.0.1"
   ],

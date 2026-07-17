@@ -108,11 +108,50 @@ async function buildReferralBundle(patientId, options = {}) {
         const patient = options.patient || (await client.request(`Patient/${patientId}`));
         addResource(patient);
 
-        const everything = await client.request(`Patient/${patientId}/$everything?_count=2500`);
-        console.log("everything bundle received:", everything);
+        // $everything is not available in all Epic environments — resolve practitioners
+        // directly from the patient's generalPractitioner references and ServiceRequest refs.
+        const practitionerRefSet = new Set();
 
-        const { practitioners, practitionerRoles } =
-        await resolvePractitionersFromBundle(client, everything);
+        // From patient.generalPractitioner
+        if (patient.generalPractitioner && Array.isArray(patient.generalPractitioner)) {
+            patient.generalPractitioner.forEach(gp => {
+                if (gp.reference && gp.reference.startsWith('Practitioner/')) {
+                    practitionerRefSet.add(gp.reference);
+                }
+            });
+        }
+        // From ServiceRequest requester / performer
+        serviceRequests.forEach(sr => {
+            [sr.requester?.reference, ...(sr.performer?.map(p => p.reference) ?? [])]
+                .filter(r => r && r.startsWith('Practitioner/'))
+                .forEach(r => practitionerRefSet.add(r));
+        });
+
+        const practitionerIds = [...practitionerRefSet].map(r => r.split('/')[1]);
+        const practitioners = [];
+        const practitionerRoles = [];
+
+        if (practitionerIds.length) {
+            try {
+                const bundle = await client.request(
+                    `Practitioner?_id=${practitionerIds.join(',')}&_count=${practitionerIds.length}`
+                );
+                practitioners.push(...(bundle.entry ?? []).map(e => e.resource).filter(Boolean));
+                console.log("Practitioners fetched:", practitioners.length);
+
+                // Fetch PractitionerRoles for these practitioners
+                try {
+                    const roleBundle = await client.request(
+                        `PractitionerRole?practitioner=${practitionerIds.join(',')}&_count=50`
+                    );
+                    practitionerRoles.push(...(roleBundle.entry ?? []).map(e => e.resource).filter(Boolean));
+                } catch (roleErr) {
+                    console.warn('PractitionerRole fetch failed (non-fatal):', roleErr?.status, roleErr?.message);
+                }
+            } catch (practErr) {
+                console.warn('Practitioner fetch failed (non-fatal):', practErr?.status, practErr?.message);
+            }
+        }
 
         console.log("Practitioners returned:", practitioners.length);
         

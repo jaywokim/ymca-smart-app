@@ -30,18 +30,32 @@
                 if (!clientId) {
                     throw new Error(`Unrecognized FHIR server: "${issHostname || iss || 'unknown'}". This vendor is not registered with the YMCA app.`);
                 }
-                const scope = manifest.scope ?? 'launch openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read';
+                const launchToken = new URLSearchParams(location.search).get("launch");
+                const isStandalone = !launchToken;
+
+                // EHR launch: use 'launch' scope + launch token
+                // Standalone: use 'launch/patient' so Epic presents a patient picker
+                const defaultEhrScope = 'launch openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read';
+                const defaultStandaloneScope = 'launch/patient openid fhirUser user/Patient.read user/Observation.read user/ServiceRequest.read user/PractitionerRole.read user/Practitioner.read user/Condition.read user/Coverage.read user/Organization.read';
+                const scope = isStandalone
+                    ? (manifest.standalone_scope ?? defaultStandaloneScope)
+                    : (manifest.scope ?? defaultEhrScope);
+
                 const redirectUri = Array.isArray(manifest.redirect_uris) && manifest.redirect_uris.length
                     ? manifest.redirect_uris[0]
                     : window.location.origin + '/index.html';
 
-                await FHIR.oauth2.authorize({
+                const authorizeParams = {
                     clientId,
                     scope,
                     redirectUri,
-                    iss: iss || undefined,
-                    launch: new URLSearchParams(location.search).get("launch")
-                });
+                    iss: iss || undefined
+                };
+                if (!isStandalone) {
+                    authorizeParams.launch = launchToken;
+                }
+
+                await FHIR.oauth2.authorize(authorizeParams);
             } catch (error) {
                 console.error('Authorization error:', error);
                 document.querySelector('.launch-container').innerHTML = `
